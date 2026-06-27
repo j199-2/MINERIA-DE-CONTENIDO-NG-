@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NextGen Creators | Content Mining</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&family=Montserrat:wght@300;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-blue: #2979FF; 
+            --brand-purple: #9C27B0; 
+            --health-green: #00E676;
+            --moto-orange: #FF9100;
+            --moto-gold: #FFD600;
+            --religion-lavander: #CE93D8;
+            --brand-gradient: linear-gradient(135deg, var(--brand-blue), var(--brand-purple));
+            --dark-bg: #050509;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-muted: #a0a0b0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Montserrat', sans-serif; background-color: var(--dark-bg); color: var(--text-main);
+            background-image: radial-gradient(circle at 0% 0%, rgba(41, 121, 255, 0.15) 0%, transparent 50%), radial-gradient(circle at 100% 100%, rgba(156, 39, 176, 0.15) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; position: relative; }
+        
+        .lang-switch { position: absolute; top: 40px; right: 20px; display: flex; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 30px; overflow: hidden; backdrop-filter: blur(10px); z-index: 10; }
+        .lang-btn { background: transparent; border: none; color: #666; padding: 8px 16px; font-family: 'Orbitron', sans-serif; font-size: 0.85rem; cursor: pointer; transition: all 0.3s ease; }
+        .lang-btn.active { background: var(--brand-gradient); color: white; box-shadow: 0 0 15px rgba(41, 121, 255, 0.4); }
+
+        .hero { text-align: center; margin-bottom: 50px; padding-top: 40px; }
+        .brand-text-logo { margin-bottom: 15px; animation: float 6s ease-in-out infinite; }
+        .brand-next { font-family: 'Orbitron', sans-serif; font-size: 4.5rem; font-weight: 900; line-height: 1; background: var(--brand-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 0 25px rgba(41, 121, 255, 0.6)); letter-spacing: 5px; }
+        .brand-gen { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; font-weight: 700; color: #ffffff; letter-spacing: 15px; text-shadow: 0 0 20px rgba(156, 39, 176, 0.8); margin-left: 15px; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+        .tagline { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; letter-spacing: 6px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 20px; }
+        .tool-title { font-family: 'Orbitron', sans-serif; font-size: 2.5rem; text-transform: uppercase; background: var(--brand-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 15px; }
+        .tool-subtitle { font-size: 1.1rem; color: var(--text-muted); max-width: 700px; margin: 0 auto 40px auto; line-height: 1.6; }
+        
+        .niche-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; max-width: 700px; margin: 0 auto 30px auto; }
+        .niche-tab { padding: 15px 10px; border-radius: 12px; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.95rem; cursor: pointer; border: 2px solid var(--glass-border); background: var(--glass-bg); color: #888; transition: all 0.3s ease; backdrop-filter: blur(10px); text-align: center; }
+        .niche-tab:hover { border-color: var(--brand-purple); color: white; }
+        
+        .niche-tab.active-drama { background: var(--brand-gradient); color: white; border-color: transparent; box-shadow: 0 0 20px rgba(41, 121, 255, 0.4); }
+        .niche-tab.active-salud { background: linear-gradient(135deg, #00C853, var(--health-green)); color: #000; border-color: transparent; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); font-weight: 900; }
+        .niche-tab.active-motivacion { background: linear-gradient(135deg, var(--moto-orange), var(--moto-gold)); color: #000; border-color: transparent; box-shadow: 0 0 20px rgba(255, 145, 0, 0.4); font-weight: 900; }
+        .niche-tab.active-religion { background: linear-gradient(135deg, var(--brand-purple), var(--religion-lavander)); color: #fff; border-color: transparent; box-shadow: 0 0 20px rgba(206, 147, 216, 0.4); font-weight: 900; }
+
+        .control-panel { max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+        .custom-select { position: relative; }
+        .custom-select select { appearance: none; -webkit-appearance: none; width: 100%; padding: 20px 50px 20px 25px; font-size: 1.1rem; font-family: 'Montserrat', sans-serif; font-weight: 600; background: rgba(10, 10, 20, 0.8); color: white; border: 2px solid var(--glass-border); border-radius: 15px; outline: none; cursor: pointer; backdrop-filter: blur(20px); transition: all 0.3s ease; }
+        .custom-select select option { background: #111; color: white; }
+        .custom-select::after { content: '▼'; position: absolute; right: 25px; top: 50%; transform: translateY(-50%); color: var(--brand-blue); pointer-events: none; font-size: 1.2rem; }
+        
+        .btn-explore { background: var(--brand-gradient); border: none; color: white; padding: 20px; font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 900; border-radius: 15px; cursor: pointer; text-transform: uppercase; letter-spacing: 3px; box-shadow: 0 0 40px rgba(41, 121, 255, 0.4); transition: all 0.3s ease; }
+        .btn-explore:hover { transform: translateY(-3px); box-shadow: 0 10px 50px rgba(156, 39, 176, 0.5); filter: brightness(1.1); }
+        .btn-explore:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        #resultados { margin-top: 50px; display: none; opacity: 0; transition: opacity 0.5s ease; }
+        #resultados.show { display: block; opacity: 1; }
+        .grid-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+        
+        .card { background: linear-gradient(160deg, rgba(41, 121, 255, 0.05) 0%, rgba(5, 5, 9, 0.8) 100%); border: 1px solid var(--glass-border); border-radius: 16px; padding: 30px; backdrop-filter: blur(20px); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; overflow: hidden; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--brand-gradient); opacity: 0; transition: opacity 0.3s ease; }
+        .card.salud-card::before { background: var(--health-green); }
+        .card.motivacion-card::before { background: var(--moto-orange); }
+        .card.religion-card::before { background: var(--religion-lavander); }
+        .card:hover { transform: translateY(-8px); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); }
+        .card:hover::before { opacity: 1; }
+        .card-title { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; margin-bottom: 20px; color: #fff; letter-spacing: 0.5px; line-height: 1.4; }
+        .card-meta { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 1rem; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; }
+        .stat-viral { color: #00E5FF; font-weight: 700; } 
+        .stat-caps { color: var(--brand-purple); font-weight: 700; }
+        .stat-type { color: var(--health-green); font-weight: 700; }
+        .stat-duration { color: #ff9800; font-weight: 700; }
+        
+        .btn-mina { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 25px; padding: 16px; text-align: center; background: var(--brand-gradient); color: white; text-decoration: none; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.95rem; border-radius: 10px; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(41, 121, 255, 0.3); }
+        .btn-mina:hover { transform: scale(1.02); box-shadow: 0 8px 30px rgba(156, 39, 176, 0.5); }
+
+        #loading { text-align: center; font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--brand-blue); margin-top: 60px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+        
+        @media (max-width: 600px) { 
+            .brand-next { font-size: 3rem; } .brand-gen { font-size: 1.8rem; letter-spacing: 8px; margin-left: 8px; } 
+            .tool-title { font-size: 1.8rem; } 
+            .niche-tabs { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="lang-switch">
+            <button class="lang-btn active" id="btn-es" onclick="setLanguage('es')">ES</button>
+            <button class="lang-btn" id="btn-en" onclick="setLanguage('en')">EN</button>
+        </div>
+
+        <header class="hero">
+            <div class="brand-text-logo">
+                <div class="brand-next">NEXTGEN</div>
+                <div class="brand-gen">CREATORS</div>
+            </div>
+            
+            <div class="tagline" id="tagline">Crea • Conecta • Impacta</div>
+            <h1 class="tool-title" id="title">Minería de Contenido</h1>
+            <p class="tool-subtitle" id="subtitle">Elige tu nicho, selecciona la categoría y extrae material viral largo para dividir, hacer clipping y monetizar.</p>
+            
+            <div class="niche-tabs">
+                <div class="niche-tab active-drama" id="tab-dramas" onclick="switchNiche('dramas')">🎬 Mini Series</div>
+                <div class="niche-tab" id="tab-salud" onclick="switchNiche('salud')">🩺 Salud y Fitness</div>
+                <div class="niche-tab" id="tab-motivacion" onclick="switchNiche('motivacion')">🚀 Motivación / Negocios</div>
+                <div class="niche-tab" id="tab-religion" onclick="switchNiche('religion')">✝️ Religión y Fe</div>
+            </div>
+
+            <div class="control-panel">
+                <div class="custom-select" id="select-container">
+                    <select id="categorySelect"></select>
+                </div>
+                
+                <button class="btn-explore" id="btn-explorar" onclick="iniciarMineriaIA()">
+                    <span data-i18n="explore">Explorar</span> ⛏️
+                </button>
+            </div>
+        </header>
+
+        <div id="resultados"></div>
+    </div>
+
+    <script>
+        let currentNiche = 'dramas';
+        let currentLang = 'es';
+
+        const categoriesDB = {
+            dramas: { es: ["💔 Romance CEO / Rico y Pobre", "🔥 Venganza / Reencarnación", "🔫 Mafia / Crimen Organizado", "✨ Fantasía / Sistema Mágico", "😂 Comedia / Vida Cotidiana"], en: ["💔 CEO Romance / Rich & Poor", "🔥 Revenge / Reincarnation", "🔫 Mafia / Organized Crime", "✨ Fantasy / Magic System", "😂 Comedy / Daily Life"] },
+            salud: { es: ["🥗 Dietas Virales / Pérdida de peso", "🔬 Nuevos Estudios Científicos", "🏋️ Rutinas de Ejercicios Efectivas", "💊 Alimentación y Suplementación", "🏥 Noticias de Salud y Bienestar"], en: ["🥗 Viral Diets / Weight loss", "🔬 New Scientific Studies", "🏋️ Effective Workout Routines", "💊 Nutrition & Supplements", "🏥 Health & Wellness News"] },
+            motivacion: { es: ["🧠 Desarrollo Personal / Hábitos", "💰 Emprendimiento / Negocios", "🗣️ Discursos Motivacionales", "📚 Resúmenes de Libros", "🔥 Historias de Éxito"], en: ["🧠 Personal Dev / Habits", "💰 Entrepreneurship / Business", "🗣️ Motivational Speeches", "📚 Book Summaries", "🔥 Success Stories"] },
+            religion: { es: ["📖 Estudios Bíblicos / Reflexiones", "🙏 Mensajes de Fe / Predicas", "🕊️ Frases y Versículos", "⛪ Testimonios de Vida", "🤲 Oraciones y Motivación Cristiana"], en: ["📖 Biblical Studies / Reflections", "🙏 Faith Messages / Sermons", "🕊️ Quotes and Verses", "⛪ Life Testimonies", "🤲 Prayers and Christian Motivation"] }
+        };
+
+        const translations = {
+            es: { tagline: "Crea • Conecta • Impacta", title: "Minería de Contenido", subtitle: "Elige tu nicho, selecciona la categoría y extrae material viral largo para dividir, hacer clipping y monetizar.", explore: "Explorar", mining: "Minando...", loadingGeneric: "La IA está buscando material largo para clipping...", empty: "No se encontraron resultados. Prueba otra categoría.", btnText: "Ir a la Fuente", errTitle: "Error de Conexión", errMsg: "Hubo un problema al conectar con el servidor de IA.", virLabel: "Potencial:", capsLabel: "Caps", typeLabel: "Tipo:", durationLabel: "Duración:" },
+            en: { tagline: "Create • Connect • Impact", title: "Content Mining", subtitle: "Choose your niche, select the category and extract long viral material to split, clip and monetize.", explore: "Explore", mining: "Mining...", loadingGeneric: "AI is searching for long clipping material...", empty: "No results found. Try another category.", btnText: "Go to Source", errTitle: "Connection Error", errMsg: "There was a problem connecting to the AI server.", virLabel: "Potential:", capsLabel: "Eps", typeLabel: "Type:", durationLabel: "Duration:" }
+        };
+
+        function switchNiche(nicho) {
+            currentNiche = nicho;
+            const tabs = ['dramas', 'salud', 'motivacion', 'religion'];
+            tabs.forEach(t => document.getElementById(`tab-${t}`).className = 'niche-tab');
+            document.getElementById(`tab-${nicho}`).className = `niche-tab active-${nicho}`;
+            const select = document.getElementById('categorySelect');
+            const colors = { dramas: 'var(--brand-blue)', salud: 'var(--health-green)', motivacion: 'var(--moto-orange)', religion: 'var(--religion-lavander)' };
+            select.style.borderColor = colors[nicho];
+            updateCategories();
+        }
+
+        function updateCategories() {
+            const select = document.getElementById('categorySelect');
+            select.innerHTML = '';
+            categoriesDB[currentNiche][currentLang].forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.replace(/^[^\s]+\s/, '');
+                option.textContent = opt;
+                select.appendChild(option);
+            });
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            const t = translations[lang];
+            document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+            document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+            document.getElementById('tagline').innerText = t.tagline;
+            document.getElementById('title').innerText = t.title;
+            document.getElementById('subtitle').innerText = t.subtitle;
+            document.querySelector('#btn-explorar span').innerText = t.explore;
+            updateCategories();
+        }
+
+        async function iniciarMineriaIA() {
+            const t = translations[currentLang];
+            const btnExplorar = document.getElementById('btn-explorar');
+            const contenedorResultados = document.getElementById('resultados');
+            const categoria = document.getElementById('categorySelect').value;
+
+            btnExplorar.querySelector('span').innerText = t.mining;
+            btnExplorar.disabled = true;
+
+            setTimeout(() => {
+                btnExplorar.style.display = 'none';
+                document.getElementById('select-container').style.display = 'none';
+                document.querySelector('.niche-tabs').style.opacity = '0.3';
+                document.querySelector('.niche-tabs').style.pointerEvents = 'none';
+                contenedorResultados.classList.add('show');
+                contenedorResultados.innerHTML = `<p id="loading">${t.loadingGeneric}</p>`;
+                llamarIA(categoria, currentLang);
+            }, 1000);
+        }
+
+        async function llamarIA(categoria, idioma) {
+            const t = translations[currentLang];
+            try {
+                const response = await fetch('/api/minar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ categoria, nicho: currentNiche, idioma })
+                });
+                if (!response.ok) throw new Error("Error del servidor");
+                const data = await response.json();
+                renderTarjetas(data.series || []);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('resultados').innerHTML = `<div style="text-align: center; margin-top: 50px;"><p style="color: var(--brand-purple); font-size: 1.5rem; font-family: 'Orbitron';">${t.errTitle}</p><p style="color: #666; margin-top:10px;">${t.errMsg}</p></div>`;
+            }
+        }
+
+        function renderTarjetas(series) {
+            const contenedor = document.getElementById('resultados');
+            contenedor.innerHTML = '';
+            const t = translations[currentLang];
+            let seriesFiltradas = currentNiche === 'dramas' ? series.filter(s => s.capitulos >= 5) : series;
+
+            if (seriesFiltradas.length === 0) {
+                contenedor.innerHTML = `<p style="text-align:center; color:#666; grid-column: 1/-1;">${t.empty}</p>`;
+                return;
+            }
+
+            const clippingNichos = ['salud', 'motivacion', 'religion'];
+            let gridHTML = '<div class="grid-results">';
+            seriesFiltradas.forEach(serie => {
+                let metaHTML = '';
+                let cardClass = `card ${currentNiche}-card`;
+                
+                if (currentNiche === 'dramas') {
+                    metaHTML = `
+                        <div class="card-meta"><span>🎬 ${serie.genero}</span><span class="stat-caps">${serie.capitulos} ${t.capsLabel}</span></div>
+                        <div class="card-meta" style="border:none; padding:0;"><span>🔥 ${t.virLabel}</span><span class="stat-viral">${serie.viralidad}</span></div>`;
+                } else if (clippingNichos.includes(currentNiche)) {
+                    metaHTML = `
+                        <div class="card-meta"><span>📑 ${t.typeLabel} ${serie.tipo}</span></div>
+                        <div class="card-meta"><span>⏱️ ${t.durationLabel} <span class="stat-duration">${serie.duracion}</span></span></div>
+                        <div class="card-meta" style="border:none; padding:0;"><span>🔥 ${t.virLabel}</span><span class="stat-viral">${serie.viralidad}</span></div>`;
+                }
+
+                gridHTML += `
+                    <div class="${cardClass}">
+                        <div class="card-title">${serie.nombre}</div>
+                        ${metaHTML}
+                        <a href="${serie.url}" target="_blank" class="btn-mina"><span>${t.btnText}</span> 🚀</a>
+                    </div>`;
+            });
+            gridHTML += '</div>';
+            contenedor.innerHTML = gridHTML;
+        }
+
+        updateCategories();
+    </script>
+</body>
+</html>
