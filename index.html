@@ -203,13 +203,13 @@
         async function llamarIA(categoria, idioma) {
             const t = translations[currentLang];
             try {
+                // RUTA CORREGIDA: Apunta exactamente a tu API Serverless '/api/mine'
                 const response = await fetch('/api/mine', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ categoria, nicho: currentNiche, idioma })
                 });
                 
-                // SI HAY ERROR HTTP, LEEMOS EL MENSAJE EXACTO
                 if (!response.ok) {
                     const errorData = await response.json();
                     throw new Error(errorData.error || "Error desconocido del servidor");
@@ -220,7 +220,6 @@
                 
             } catch (error) {
                 console.error(error);
-                // MOSTRAMOS EL ERROR DETALLADO EN PANTALLA EN COLOR ROJO
                 document.getElementById('resultados').innerHTML = `
                     <div style="text-align: center; margin-top: 50px;">
                         <p style="color: var(--brand-purple); font-size: 1.5rem; font-family: 'Orbitron';">${t.errTitle}</p>
