@@ -203,7 +203,7 @@
         async function llamarIA(categoria, idioma) {
             const t = translations[currentLang];
             try {
-                const response = await fetch('/api/minar', {
+                const response = await fetch('/api/mine', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ categoria, nicho: currentNiche, idioma })
