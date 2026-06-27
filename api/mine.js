@@ -2,7 +2,6 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
     const { categoria, nicho, idioma } = req.body;
-    // CAMBIO 1: Ahora leemos la clave de Groq
     const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) return res.status(500).json({ error: "Falta la GROQ_API_KEY en Vercel" });
@@ -23,15 +22,14 @@ export default async function handler(req, res) {
     }
 
     try {
-        // CAMBIO 2: Nueva dirección de Groq y formato de seguridad
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}` // Groq usa "Bearer" antes de la clave
+                "Authorization": `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: "llama-3.1-70b-versatile", // El modelo ultra rápido de Groq
+                model: "llama-3.3-70b-versatile", // MODELO ACTUALIZADO
                 messages: [
                     { role: "system", content: "Eres un asistente que responde SOLO en formato JSON válido, sin usar bloques de código ```json." },
                     { role: "user", content: promptSistema }
@@ -42,7 +40,11 @@ export default async function handler(req, res) {
 
         const data = await response.json();
         
-        // CAMBIO 3: La forma de extraer el texto cambia en Groq
+        // Si Groq devuelve un error, lo mostramos exacto
+        if (data.error) {
+            throw new Error("Error de Groq: " + data.error.message);
+        }
+
         const textoIA = data.choices[0].message.content;
         const textoLimpio = textoIA.replace(/```json/g, '').replace(/```/g, '').trim();
         const series = JSON.parse(textoLimpio);
@@ -51,6 +53,6 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error("Error con Groq:", error);
-        return res.status(500).json({ error: "La IA no pudo procesar la solicitud" });
+        return res.status(500).json({ error: error.message }); // Ahora dirá el error exacto
     }
 }
