@@ -208,12 +208,26 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ categoria, nicho: currentNiche, idioma })
                 });
-                if (!response.ok) throw new Error("Error del servidor");
+                
+                // SI HAY ERROR HTTP, LEEMOS EL MENSAJE EXACTO
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || "Error desconocido del servidor");
+                }
+                
                 const data = await response.json();
                 renderTarjetas(data.series || []);
+                
             } catch (error) {
                 console.error(error);
-                document.getElementById('resultados').innerHTML = `<div style="text-align: center; margin-top: 50px;"><p style="color: var(--brand-purple); font-size: 1.5rem; font-family: 'Orbitron';">${t.errTitle}</p><p style="color: #666; margin-top:10px;">${t.errMsg}</p></div>`;
+                // MOSTRAMOS EL ERROR DETALLADO EN PANTALLA EN COLOR ROJO
+                document.getElementById('resultados').innerHTML = `
+                    <div style="text-align: center; margin-top: 50px;">
+                        <p style="color: var(--brand-purple); font-size: 1.5rem; font-family: 'Orbitron';">${t.errTitle}</p>
+                        <p style="color: #ff4d4d; margin-top:20px; font-size: 1.1rem; background: rgba(255,0,0,0.1); padding: 15px; border-radius: 10px; border: 1px solid #ff4d4d;">
+                            ${error.message}
+                        </p>
+                    </div>`;
             }
         }
 
