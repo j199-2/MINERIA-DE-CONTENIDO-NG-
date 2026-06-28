@@ -8,16 +8,15 @@ export default async function handler(req, res) {
 
     const idiomaCompleto = idioma === 'es' ? 'ESPAÑOL' : 'INGLÉS';
 
-    // Lógica de búsqueda para asegurar que encuentre contenido de calidad
+    // ANTENAS CALIBRADAS: Traducimos lo que busca la gente común a lenguaje de buscador web
     let query = "";
     if (nicho === 'dramas') {
-        query = `mini series verticales "${categoria}" gratis en ${idiomaCompleto} youtube o dailymotion`;
+        query = `playlist "mini serie corta" "${categoria}" vertical gratis ${idiomaCompleto} site:youtube.com OR site:dailymotion.com`;
     } else {
-        query = `vídeos largos de "${categoria}" en ${idiomaCompleto} youtube`;
+        query = `top trending "${categoria}" ${idiomaCompleto} site:youtube.com`;
     }
 
     try {
-        // EL RADAR: Búsqueda en internet en tiempo real
         const response = await fetch("https://api.tavily.com/search", {
             method: "POST",
             headers: {
@@ -26,21 +25,19 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 query: query,
-                search_depth: "basic", // Rápido y gratuito
-                max_results: 5 // Trae 5 resultados reales
+                search_depth: "advanced", // RADAR MEJORADO: Búsqueda profunda
+                max_results: 5 
             })
         });
 
         const data = await response.json();
 
         if (!data.results || data.results.length === 0) {
-            return res.status(200).json({ series: [] }); // Si no hay resultados, devuelve lista vacía
+            return res.status(200).json({ series: [] }); 
         }
 
-        // MAPEO: Convertimos lo que encontró Tavily al formato exacto que espera tu página
         const series = data.results.map(item => {
-            // Los datos de Tavily no tienen "capítulos" ni "duración", se los inventamos de forma inteligente
-            const isVertical = item.title.toLowerCase().includes('vertical') || nicho === 'dramas';
+            const isVertical = nicho === 'dramas' || item.title.toLowerCase().includes('vertical');
             
             if (isVertical) {
                 return { nombre: item.title, genero: categoria, capitulos: "5+", viralidad: "Alta", url: item.url };
@@ -49,7 +46,7 @@ export default async function handler(req, res) {
             }
         });
 
-        return res.status(200).json({ series });
+        return res.status(200).json({ series: series });
 
     } catch (error) {
         console.error("Error con Tavily:", error);
