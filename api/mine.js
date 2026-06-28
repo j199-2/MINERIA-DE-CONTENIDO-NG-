@@ -12,15 +12,16 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Conexión directa a la API v1 estable de Google
+        // Conexión estable v1
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1' });
         
+        // Corregido: 'response_mime_type' con guion bajo para que Google lo reconozca
         const model = genAI.getGenerativeModel({ 
             model: "gemini-1.5-flash",
-            generationConfig: { responseMimeType: "application/json" }
+            generationConfig: { response_mime_type: "application/json" }
         });
 
-        // Configuración de la estructura según el nicho en tiempo real
+        // Configuración de la estructura según el nicho
         let estructuraEjemplo = "";
         if (nicho === "dramas") {
             estructuraEjemplo = `{ "nombre": "Título", "genero": "Estilo", "capitulos": 10, "viralidad": "95%", "url": "https://youtube.com" }`;
@@ -42,7 +43,7 @@ export default async function handler(req, res) {
         const result = await model.generateContent(prompt);
         const textResponse = result.response.text();
 
-        // Limpieza de formato markdown de la respuesta de la IA
+        // Limpieza por si acaso la IA mete formato markdown
         const jsonLimpio = textResponse.replace(/```json/g, "").replace(/```/g, "").trim();
         
         const respuestaIA = JSON.parse(jsonLimpio);
@@ -51,7 +52,6 @@ export default async function handler(req, res) {
     } catch (error) {
         console.error("Error en el backend con Gemini:", error);
         
-        // AHORA NO HAY RESPALDO: Si algo falla, se envía el error real directo a la pantalla
         return res.status(500).json({ 
             error: `Error de la IA en tiempo real: ${error.message || "No se pudo procesar la solicitud"}` 
         });
