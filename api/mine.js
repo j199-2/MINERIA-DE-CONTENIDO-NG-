@@ -1,52 +1,58 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
 export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method Not Allowed' });
-    }
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
     const { categoria, nicho, idioma } = req.body;
+    const apiKey = process.env.TAVILY_API_KEY;
 
-    if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ error: "Falta la GEMINI_API_KEY en Vercel" });
+    if (!apiKey) return res.status(500).json({ error: "Falta la TAVILY_API_KEY en Vercel" });
+
+    const idiomaCompleto = idioma === 'es' ? 'ESPAÑOL' : 'INGLÉS';
+
+    // Lógica de búsqueda para asegurar que encuentre contenido de calidad
+    let query = "";
+    if (nicho === 'dramas') {
+        query = `mini series verticales "${categoria}" gratis en ${idiomaCompleto} youtube o dailymotion`;
+    } else {
+        query = `vídeos largos de "${categoria}" en ${idiomaCompleto} youtube`;
     }
 
     try {
-        // 1. SDK limpio apuntando a v1
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, { apiVersion: 'v1' });
-        
-        // 2. USAMOS GEMINI 1.5-PRO (Que sabemos que SÍ funciona)
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-pro",
-            // 3. SINTAXIS CORRECTA DE GEMINI (snake_case, fuera de generationConfig)
-            generationConfig: { 
-                temperature: 0.3 
+        // EL RADAR: Búsqueda en internet en tiempo real
+        const response = await fetch("https://api.tavily.com/search", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
             },
-            response_mime_type: "application/json" 
+            body: JSON.stringify({
+                query: query,
+                search_depth: "basic", // Rápido y gratuito
+                max_results: 5 // Trae 5 resultados reales
+            })
         });
 
-        let estructuraEjemplo = "";
-        if (nicho === "dramas") {
-            estructuraEjemplo = `{ "nombre": "Título", "genero": "Estilo", "capitulos": 10, "viralidad": "95%", "url": "https://youtube.com" }`;
-        } else {
-            estructuraEjemplo = `{ "nombre": "Título", "tipo": "Video/Podcast", "duracion": "15:00 min", "viralidad": "95%", "url": "https://youtube.com" }`;
+        const data = await response.json();
+
+        if (!data.results || data.results.length === 0) {
+            return res.status(200).json({ series: [] }); // Si no hay resultados, devuelve lista vacía
         }
 
-        const prompt = `Actúa como un experto en minería de contenidos y clipping viral. 
-        Genera 3 ideas de contenido viral para el nicho "${nicho}" y la categoría "${categoria}".
-        Responde estrictamente en formato JSON válido, sin textos extras, en idioma "${idioma || 'es'}:
-        { "series": [ ${estructuraEjemplo} ] }`;
+        // MAPEO: Convertimos lo que encontró Tavily al formato exacto que espera tu página
+        const series = data.results.map(item => {
+            // Los datos de Tavily no tienen "capítulos" ni "duración", se los inventamos de forma inteligente
+            const isVertical = item.title.toLowerCase().includes('vertical') || nicho === 'dramas';
+            
+            if (isVertical) {
+                return { nombre: item.title, genero: categoria, capitulos: "5+", viralidad: "Alta", url: item.url };
+            } else {
+                return { nombre: item.title, tipo: "Video/Podcast", duracion: "+15 mins", viralidad: "Materia Prima", url: item.url };
+            }
+        });
 
-        const result = await model.generateContent(prompt);
-        const textResponse = result.response.text().replace(/```json/g, "").replace(/```/g, "").trim();
-        
-        const respuestaGemini = JSON.parse(textResponse);
-        return res.status(200).json({ series: respuestaGemini.series || [] });
+        return res.status(200).json({ series });
 
     } catch (error) {
-        console.error("Error en el backend:", error);
-        return res.status(500).json({ 
-            error: `Error de la IA: ${error.message}` 
-        });
+        console.error("Error con Tavily:", error);
+        return res.status(500).json({ error: "Error de búsqueda: " + error.message });
     }
 }
