@@ -6,14 +6,18 @@ export default async function handler(req, res) {
 
     if (!apiKey) return res.status(500).json({ error: "Falta la TAVILY_API_KEY en Vercel" });
 
-    const idiomaCompleto = idioma === 'es' ? 'ESPAÑOL' : 'INGLÉS';
+    const idiomaCompleto = idioma === 'es' ? 'español' : 'english';
 
-    // ANTENAS CALIBRADAS: Traducimos lo que busca la gente común a lenguaje de buscador web
+    // ANTENAS NATURALES: Buscamos tal como lo hace un humano
     let query = "";
     if (nicho === 'dramas') {
-        query = `playlist "mini serie corta" "${categoria}" vertical gratis ${idiomaCompleto} site:youtube.com OR site:dailymotion.com`;
-    } else {
-        query = `top trending "${categoria}" ${idiomaCompleto} site:youtube.com`;
+        query = `mini series cortas "${categoria}" ${idiomaCompleto}`;
+    } else if (nicho === 'salud') {
+        query = `${categoria} rutina ejercicio ${idiomaCompleto}`;
+    } else if (nicho === 'motivacion') {
+        query = `conferencia "${categoria}" ${idiomaCompleto}`;
+    } else if (nicho === 'religion') {
+        query = `predica "${categoria}" ${idiomaCompleto}`;
     }
 
     try {
@@ -25,7 +29,7 @@ export default async function handler(req, res) {
             },
             body: JSON.stringify({
                 query: query,
-                search_depth: "advanced", // RADAR MEJORADO: Búsqueda profunda
+                search_depth: "basic", // Volver al modo básico para asegurar resultados
                 max_results: 5 
             })
         });
