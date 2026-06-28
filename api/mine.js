@@ -1,5 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
@@ -24,24 +22,36 @@ export default async function handler(req, res) {
     }
 
     try {
-        // INICIALIZACIÓN CON EL SDK OFICIAL FORZANDO RUTA V1
-        const genAI = new GoogleGenerativeAI(apiKey, {
-            httpOptions: { baseUrl: 'https://generativelanguage.googleapis.com/v1' }
+        // MÉTODO DIRECTO, RUTA OFICIAL V1, MODELO PRO (EL MÁS ESTABLE)
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${apiKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: promptSistema }] }],
+                generationConfig: { 
+                    responseMimeType: "application/json", // EVITA EL ERROR "UNEXPECTED TOKEN"
+                    temperature: 0.3 
+                }
+            })
         });
-        
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
-            generationConfig: { 
-                responseMimeType: "application/json", 
-                temperature: 0.3 
+
+        const responseText = await response.text();
+
+        try {
+            const data = JSON.parse(responseText);
+            
+            if (data.error) {
+                throw new Error("Error de Gemini: " + data.error.message);
             }
-        });
 
-        const result = await model.generateContent(promptSistema);
-        const textoLimpio = result.response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-        const series = JSON.parse(textoLimpio);
+            const textoIA = data.candidates[0].content.parts[0].text;
+            const textoLimpio = textoIA.replace(/```json/g, '').replace(/```/g, '').trim();
+            const series = JSON.parse(textoLimpio);
+            return res.status(200).json({ series: series });
 
-        return res.status(200).json({ series: series });
+        } catch (parseError) {
+            throw new Error("Gemini no envió JSON. Respondió esto: " + responseText.substring(0, 300));
+        }
 
     } catch (error) {
         console.error("Error con Gemini:", error);
