@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "express": "^4.19.2"
+    "@google/generative-ai": "^0.21.0"
   }
 }
