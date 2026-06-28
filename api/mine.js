@@ -24,7 +24,8 @@ export default async function handler(req, res) {
     }
 
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        // CAMBIO AQUÍ: Usamos -latest para evitar errores de Google
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -33,11 +34,9 @@ export default async function handler(req, res) {
             })
         });
 
-        // Leemos la respuesta como texto, no como JSON todavía
         const responseText = await response.text();
 
         try {
-            // Intentamos convertir el texto a JSON
             const data = JSON.parse(responseText);
             
             if (data.error) {
@@ -46,13 +45,10 @@ export default async function handler(req, res) {
 
             const textoIA = data.candidates[0].content.parts[0].text;
             const textoLimpio = textoIA.replace(/```json/g, '').replace(/```/g, '').trim();
-            
-            // Verificamos si lo que devolvió la IA es un JSON válido
             const series = JSON.parse(textoLimpio);
             return res.status(200).json({ series: series });
 
         } catch (parseError) {
-            // SI NO ES JSON, ENVIAMOS EL TEXTO PLANO PARA VER QUÉ DIJO GEMINI
             throw new Error("Gemini no envió JSON. Respondió esto: " + responseText.substring(0, 300));
         }
 
