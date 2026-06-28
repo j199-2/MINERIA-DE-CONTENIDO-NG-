@@ -24,12 +24,15 @@ export default async function handler(req, res) {
     }
 
     try {
-        // INICIALIZACIÓN CON EL SDK OFICIAL
-        const genAI = new GoogleGenerativeAI(apiKey);
+        // INICIALIZACIÓN CON EL SDK OFICIAL FORZANDO RUTA V1
+        const genAI = new GoogleGenerativeAI(apiKey, {
+            httpOptions: { baseUrl: 'https://generativelanguage.googleapis.com/v1' }
+        });
+        
         const model = genAI.getGenerativeModel({ 
             model: "gemini-1.5-flash",
             generationConfig: { 
-                responseMimeType: "application/json", // LA MAGIA: Obliga a responder en JSON limpio
+                responseMimeType: "application/json", 
                 temperature: 0.3 
             }
         });
