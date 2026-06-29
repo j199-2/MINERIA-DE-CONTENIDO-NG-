@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const tiempo = idioma === 'es' ? 'esta semana' : 'this week';
 
     // ==========================================
-    // NIVEL 1: DRAMAS
+    // NIVEL 1: DRAMAS (Sin cambios)
     // ==========================================
     if (nicho === 'dramas') {
         try {
@@ -40,13 +40,13 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (Filtro Anti-Shorts, Pro-Artículos y Análisis Profundo)
+    // NIVEL 2: CLIPPING (Ley Estricta Anti-Instagram)
     // ==========================================================================================
     let queryTavily = "";
-    // ELIMINAMOS TIKTOK Y REELS. Buscamos YouTube largo, Podcasts, Blogs y Noticias.
-    if (nicho === 'salud') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR noticia) ${idiomaCompleto} -tiktok -reels -shorts`;
-    else if (nicho === 'motivacion') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR noticia) ${idiomaCompleto} -tiktok -reels -shorts`;
-    else if (nicho === 'religion') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR sermon) ${idiomaCompleto} -tiktok -reels -shorts`;
+    // LEY ESTRICTA: Se agregó "-instagram" a todas las búsquedas para bloquear esa red
+    if (nicho === 'salud') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR noticia) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
+    else if (nicho === 'motivacion') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR noticia) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
+    else if (nicho === 'religion') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR sermon) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
 
     try {
         const tavilyResponse = await fetch("https://api.tavily.com/search", {
@@ -78,12 +78,12 @@ export default async function handler(req, res) {
 
         const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // NUEVO PROMPT: Estratega que distingue Videos de Textos y analiza a fondo
+        // PROMPT: Se añadió Instagram a la lista negra de la IA
         const promptGroq = idioma === 'es' 
         ? `Eres un Estratega de Contenido Experto. Analiza estos resultados de la última semana sobre "${categoria}".
         REGLAS ESTRICTAS:
         1. IDENTIFICA EL FORMATO: Debes decir si es "Video Largo/Podcast" o "Artículo/Noticia".
-        2. DESCARTA cualquier cosa que sea de TikTok, Reels, Shorts o menores a 15 minutos (a menos que sea un artículo de alto valor).
+        2. LEY ESTRICTA: DESCARTA cualquier cosa que sea de TikTok, Reels, Shorts, Instagram o menores a 15 minutos.
         3. DESCRIPCIÓN: Explica claramente de qué trata el contenido (2 líneas).
         4. POTENCIAL VIRAL: Explica por qué la gente haría clic o compartiría esto (1 línea).
         5. GANCHO: Si es video, di qué minuto clippear. Si es artículo, di cómo convertirlo en video.
@@ -93,7 +93,7 @@ export default async function handler(req, res) {
         : `You are an Expert Content Strategist. Analyze these results from the past week about "${categoria}".
         STRICT RULES:
         1. IDENTIFY FORMAT: You must say if it is "Long Video/Podcast" or "Article/News".
-        2. DISCARD anything from TikTok, Reels, Shorts, or under 15 mins (unless it's a high-value article).
+        2. STRICT LAW: DISCARD anything from TikTok, Reels, Shorts, Instagram, or under 15 mins.
         3. DESCRIPTION: Explain clearly what the content is about (2 lines).
         4. VIRAL POTENTIAL: Explain why people would click or share this (1 line).
         5. HOOK: If it's a video, say what minute to clip. If it's an article, say how to turn it into a video.
