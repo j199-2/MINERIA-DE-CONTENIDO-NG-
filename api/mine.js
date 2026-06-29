@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (Bloqueador Real + Gemini)
+    // NIVEL 2: CLIPPING 
     // ==========================================================================================
     
     let queryTavily = `${categoria} video largo o podcast reciente ${idiomaCompleto}`;
@@ -50,7 +50,6 @@ export default async function handler(req, res) {
                 search_depth: "advanced", 
                 max_results: 15,
                 time_range: "week",
-                // EL GOLPE MAESTRO: Le prohibimos a Tavily escanear estos dominios. Es imposible que los traiga.
                 exclude_domains: ["instagram.com", "facebook.com", "tiktok.com", "twitter.com", "x.com"]
             })
         });
@@ -60,7 +59,6 @@ export default async function handler(req, res) {
             return res.status(200).json({ series: [] });
         }
 
-        // Respaldo de emergencia (Ahora seguro, sin Instagram)
         const respaldoSeguro = tavilyData.results.slice(0, 5).map(item => ({
             nombre: item.title,
             tipo_contenido: "Contenido Encontrado",
@@ -72,7 +70,7 @@ export default async function handler(req, res) {
 
         const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // 2. GEMINI
+        // 2. GEMINI (Usando el alias 'latest' para que nunca falle la ruta)
         const promptGemini = idioma === 'es' 
         ? `Eres un Curador de Contenido Experto para creadores de TikTok/Reels. Te voy a dar resultados sobre "${categoria}".
         Encuentra las 3 a 5 piezas MÁS VALIOSAS para clipping.
@@ -99,7 +97,8 @@ export default async function handler(req, res) {
         {"nombre": "Title", "tipo_contenido": "Long Video" or "Podcast/Audio" or "Article/News", "descripcion": "What it's about...", "potencial_viralidad": "Why...", "gancho": "What to do...", "url": "link"}
         Data: ${materiaPrima}`;
 
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        // EL CAMBIO ESTÁ AQUÍ: gemini-1.5-flash-latest
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`;
         
         const geminiResponse = await fetch(geminiUrl, {
             method: "POST",
@@ -119,7 +118,6 @@ export default async function handler(req, res) {
         if (geminiData.candidates && geminiData.candidates[0] && geminiData.candidates[0].content) {
             textoRespuesta = geminiData.candidates[0].content.parts[0].text || "[]";
         } else {
-            // Si Gemini falla (ej. clave mala), mostramos el error real para que sepas qué pasa
             console.error("Error de Gemini:", JSON.stringify(geminiData));
             const errorMsg = geminiData.error?.message || "Error desconocido con Gemini";
             return res.status(500).json({ error: "Fallo Gemini: " + errorMsg });
