@@ -3,10 +3,10 @@ export default async function handler(req, res) {
 
     const { categoria, nicho, idioma } = req.body;
     const tavilyKey = process.env.TAVILY_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
 
-    if (!tavilyKey || !geminiKey) {
-        return res.status(500).json({ error: "Error: Faltan las claves API (Tavily o Gemini) en Vercel." });
+    if (!tavilyKey || !groqKey) {
+        return res.status(500).json({ error: "Error: Faltan TAVILY_API_KEY o GROQ_API_KEY en Vercel." });
     }
 
     const idiomaCompleto = idioma === 'es' ? 'español' : 'english';
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING 
+    // NIVEL 2: CLIPPING (Tavily + Groq Cerebro Grande 70B con JSON Mode)
     // ==========================================================================================
     
     let queryTavily = `${categoria} video largo o podcast reciente ${idiomaCompleto}`;
@@ -70,8 +70,8 @@ export default async function handler(req, res) {
 
         const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // 2. GEMINI (Cambiado a v1 para compatibilidad total con claves nuevas)
-        const promptGemini = idioma === 'es' 
+        // 2. GROQ CEREBRO GRANDE (70B)
+        const promptGroq = idioma === 'es' 
         ? `Eres un Curador de Contenido Experto para creadores de TikTok/Reels. Te voy a dar resultados sobre "${categoria}".
         Encuentra las 3 a 5 piezas MÁS VALIOSAS para clipping.
         
@@ -97,42 +97,47 @@ export default async function handler(req, res) {
         {"nombre": "Title", "tipo_contenido": "Long Video" or "Podcast/Audio" or "Article/News", "descripcion": "What it's about...", "potencial_viralidad": "Why...", "gancho": "What to do...", "url": "link"}
         Data: ${materiaPrima}`;
 
-        // EL CAMBIO ESTÁ AQUÍ: Cambiamos v1beta por v1, y usamos el modelo estándar gemini-1.5-flash
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-        
-        const geminiResponse = await fetch(geminiUrl, {
+        const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json", 
+                "Authorization": `Bearer ${groqKey}` 
+            },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: promptGemini }] }],
-                generationConfig: {
-                    temperature: 0.4,
-                    responseMimeType: "application/json" 
-                }
+                // EL SECRETO: Usamos el modelo de 70 Billones de parámetros. Es super inteligente.
+                model: "llama-3.1-70b-versatile",
+                messages: [{ role: "user", content: promptGroq }],
+                temperature: 0.3,
+                // EL DOBLE SECRETO: Forzamos JSON Mode. Es imposible que falle el formato.
+                response_format: { type: "json_object" } 
             })
         });
 
-        const geminiData = await geminiResponse.json();
+        const groqData = await groqResponse.json();
         
         let textoRespuesta = "";
-        if (geminiData.candidates && geminiData.candidates[0] && geminiData.candidates[0].content) {
-            textoRespuesta = geminiData.candidates[0].content.parts[0].text || "[]";
+        if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
+            textoRespuesta = groqData.choices[0].message.content || "{}";
         } else {
-            console.error("Error de Gemini:", JSON.stringify(geminiData));
-            const errorMsg = geminiData.error?.message || "Error desconocido con Gemini";
-            return res.status(500).json({ error: "Fallo Gemini: " + errorMsg });
+            console.error("Error de Groq:", JSON.stringify(groqData));
+            return res.status(500).json({ error: "Fallo Groq: " + (groqData.error?.message || "Error desconocido") });
         }
 
         let seriesAnalizadas;
         try {
+            // Como usamos JSON mode, viene limpio, pero limpiamos por si acaso
             const jsonLimpio = textoRespuesta.replace(/```json/g, '').replace(/```/g, '').trim();
-            seriesAnalizadas = JSON.parse(jsonLimpio);
+            const parseado = JSON.parse(jsonLimpio);
+            
+            // Como usamos json_object, devuelve un objeto, no un array. Extraemos el array.
+            seriesAnalizadas = parseado.data || parseado.resultados || parseado.results || parseado;
             
             if (!Array.isArray(seriesAnalizadas) || seriesAnalizadas.length === 0) {
                 return res.status(200).json({ series: respaldoSeguro });
             }
             
         } catch (parseError) {
+            console.error("Error parseando:", parseError);
             return res.status(200).json({ series: respaldoSeguro });
         }
 
