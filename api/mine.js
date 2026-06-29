@@ -6,13 +6,14 @@ export default async function handler(req, res) {
     const groqKey = process.env.GROQ_API_KEY;
 
     if (!tavilyKey || !groqKey) {
-        return res.status(500).json({ error: "Error crítico: Faltan las claves API (TAVILY o GROQ) en Vercel. Ve a Settings > Environment Variables y agrúpalas." });
+        return res.status(500).json({ error: "Error: Faltan las claves API en Vercel." });
     }
 
     const idiomaCompleto = idioma === 'es' ? 'español' : 'english';
+    const tiempo = idioma === 'es' ? 'subido hoy' : 'uploaded today';
 
     // ==========================================
-    // NIVEL 1: DRAMAS (Búsqueda rápida y directa)
+    // NIVEL 1: DRAMAS (Búsqueda rápida de listas)
     // ==========================================
     if (nicho === 'dramas') {
         try {
@@ -39,19 +40,24 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: SALUD, MOTIVACIÓN, RELIGIÓN (Tavily busca en internet + Groq analiza la información)
+    // NIVEL 2: CLIPPING (El Cazador de Ganchos en Tiempo Real)
     // ==========================================================================================
     let queryTavily = "";
-    if (nicho === 'salud') queryTavily = `tendencias de salud y fitness "${categoria}" en ${idiomaCompleto} youtube`;
-    else if (nicho === 'motivacion') queryTavily = `conferencias de emprendimiento "${categoria}" en ${idiomaCompleto} youtube`;
-    else if (nicho === 'religion') queryTavily = `predicas cristianas "${categoria}" en ${idiomaCompleto} youtube`;
+    if (nicho === 'salud') queryTavily = `${categoria} ${tiempo} podcast o video largo ${idiomaCompleto}`;
+    else if (nicho === 'motivacion') queryTavily = `${categoria} ${tiempo} conferencia o podcast ${idiomaCompleto}`;
+    else if (nicho === 'religion') queryTavily = `${categoria} ${tiempo} predica o estudio biblico ${idiomaCompleto}`;
 
     try {
-        // FASE 1: El Radar (Buscar materia prima en internet)
+        // FASE 1: RADAR DE ESTRENOS (Solo cosas de hoy)
         const tavilyResponse = await fetch("https://api.tavily.com/search", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
-            body: JSON.stringify({ query: queryTavily, search_depth: "advanced", max_results: 8 })
+            body: JSON.stringify({ 
+                query: queryTavily, 
+                search_depth: "advanced", 
+                max_results: 10,
+                time_range: "day" // LA CLAVE: Solo trae lo de las últimas 24 horas
+            })
         });
 
         const tavilyData = await tavilyResponse.json();
@@ -59,18 +65,26 @@ export default async function handler(req, res) {
             return res.status(200).json({ series: [] });
         }
 
-        // Preparamos la información para enviársela al analista (Groq)
         const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // FASE 2: El Analista (Groq filtra y ordena los datos)
-        const promptGroq = `Eres un experto en minería de contenido para creadores. Te voy a dar resultados de búsqueda de internet. 
-Tu trabajo es filtrar solo los que sirven para hacer "clipping" (videos largos de al menos 15 minutos, o estudios/profundizaciones). 
-Descarta noticias breves o artículos sin video.
-Devuelve UNICAMENTE un JSON array (sin texto antes ni después) con máximo 5 resultados. 
-Cada objeto debe tener exactamente esta estructura: 
-{"nombre": "Titulo limpio", "tipo": "Video/Podcast/Estudio", "duracion": "+15 mins", "descripcion": "Resumen de 2 líneas de qué trata", "viralidad": "Alta/Media/Baja según el título", "url": "el enlace real"}
-Aquí están los resultados:
- ${materiaPrima}`;
+        // FASE 2: EL OJEADOR (Groq buscando el Gancho perfecto para TikTok)
+        const promptGroq = idioma === 'es' 
+        ? `Eres un "Cazador de Ganchos" experto para TikTok/Reels. Tu misión es encontrar material de video largo (más de 15 minutos) que se haya subido en las últimas 24 horas y que tenga potencial para hacer CLIPPING.
+        Reglas estrictas:
+        1. DESCARTA cualquier resultado que sea un artículo corto o no tenga video.
+        2. DESCARTA cualquier resultado que no tenga un "gancho" claro (una polémica, una revelación, un error famoso, un dato impactante).
+        3. Si no hay nada que valga la pena, devuelve un array vacío [].
+        Devuelve ÚNICAMENTE un JSON array con máximo 5 resultados. Formato:
+        {"nombre": "Título", "gancho": "Explica en 2 líneas QUÉ momento exacto clippear y por qué explotará (Ej: Minuto 4:20 revela...)", "estado": "🔥 Acaba de subir", "viralidad": "Alta/Media", "url": "enlace"}
+        Datos: ${materiaPrima}`
+        : `You are an expert "Hook Hunter" for TikTok/Reels. Your mission is to find long-form video material (15+ mins) uploaded in the last 24 hours with high CLIPPING potential.
+        Strict rules:
+        1. DISCARD any short articles or non-video content.
+        2. DISCARD anything without a clear "hook" (controversy, reveal, mistake, shocking fact).
+        3. If nothing is good enough, return an empty array [].
+        Return ONLY a JSON array with max 5 results. Format:
+        {"nombre": "Title", "gancho": "Explain in 2 lines WHAT exact moment to clip and why it will go viral (Eg: Minute 4:20 reveals...)", "estado": "🔥 Just uploaded", "viralidad": "High/Medium", "url": "link"}
+        Data: ${materiaPrima}`;
 
         const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
@@ -79,23 +93,22 @@ Aquí están los resultados:
                 "Authorization": `Bearer ${groqKey}` 
             },
             body: JSON.stringify({
-                model: "llama-3.1-8b-instant", // Modelo rápido y gratuito
+                model: "llama-3.1-8b-instant",
                 messages: [{ role: "user", content: promptGroq }],
-                temperature: 0.3
+                temperature: 0.4
             })
         });
 
         const groqData = await groqResponse.json();
         const textoRespuesta = groqData.choices[0]?.message?.content || "[]";
         
-        // Limpiar la respuesta por si Groq pone caracteres extraños
         const jsonLimpio = textoRespuesta.replace(/```json/g, '').replace(/```/g, '').trim();
         
         let seriesAnalizadas;
         try {
             seriesAnalizadas = JSON.parse(jsonLimpio);
         } catch (parseError) {
-            return res.status(500).json({ error: "La IA no pudo leer los datos. Intenta de nuevo." });
+            return res.status(200).json({ series: [] }); // Si la IA se confunde, mejor mostrar vacío que error
         }
 
         return res.status(200).json({ series: seriesAnalizadas });
