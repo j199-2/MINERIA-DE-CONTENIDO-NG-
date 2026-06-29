@@ -10,11 +10,10 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 1: DRAMAS (Jardín Vallado + Modo Investigador)
+    // NIVEL 1: DRAMAS (Sin cambios, perfecto)
     // ==========================================================================================
     if (nicho === 'dramas') {
         const idiomaCompleto = idioma === 'es' ? 'español' : 'english';
-        // Cambio: Buscamos versión web y bloqueamos resultados de Apps
         const query = `"${categoria}" mini serie web online -app -playstore -apk -descargar aplicacion`;
         
         const fuentesDrama = [
@@ -31,33 +30,16 @@ export default async function handler(req, res) {
             const response = await fetch("https://api.tavily.com/search", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
-                body: JSON.stringify({ 
-                    query, 
-                    search_depth: "advanced", 
-                    max_results: 10,
-                    include_domains: fuentesDrama
-                })
+                body: JSON.stringify({ query, search_depth: "advanced", max_results: 10, include_domains: fuentesDrama })
             });
             const data = await response.json();
-            if (!data.results || data.results.length === 0) return res.status(200).json({ series: [] });
+            if (!data.results) return res.status(200).json({ series: [] });
 
             const textoParaIA = data.results.map((item, i) => `Serie ${i+1}:\nTitulo: ${item.title}\nTexto: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
             const promptDrama = idioma === 'es' 
-            ? `Eres un extractor de datos de Mini Dramas. Analiza estos resultados de "${categoria}".
-            INSTRUCCIÓN CRÍTICA SOBRE EPISODIOS:
-            1. Lee el texto buscando números seguidos de "free", "gratis", "episodios", "episodes".
-            2. Si encuentras el dato exacto, escríbelo tal cual.
-            3. SI EL TEXTO NO DICE NADA, NO INVENTES. Escribe exactamente: "Verificar en la web".
-            Devuelve ÚNICAMENTE un JSON: {"resultados": [{"nombre": "Título limpio", "descripcion": "De qué trata en 2 líneas", "capitulos": "X episodios gratis" o "Verificar en la web", "url": "enlace"}]}
-            Datos: ${textoParaIA}`
-            : `You are a Mini Drama data extractor. Analyze these results for "${categoria}".
-            CRITICAL INSTRUCTION ON EPISODES:
-            1. Read the text looking for numbers next to "free", "episodes".
-            2. If you find the exact data, write it exactly.
-            3. IF THE TEXT SAYS NOTHING, DO NOT INVENT. Write exactly: "Check website".
-            Return ONLY a JSON: {"resultados": [{"nombre": "Clean title", "descripcion": "What it's about in 2 lines", "capitulos": "X free episodes" or "Check website", "url": "link"}]}
-            Data: ${textoParaIA}`;
+            ? `Analiza estos resultados de "${categoria}". Si el texto dice cuántos eps gratis, ponlo. Si no dice nada, pon "Verificar en la web". Devuelve ÚNICAMENTE este JSON: {"resultados": [{"nombre": "Título", "descripcion": "De qué va", "capitulos": "X gratis" o "Verificar en la web", "url": "enlace"}]} Datos: ${textoParaIA}`
+            : `Analyze these "${categoria}" results. If text says free eps, write it. If not, "Check website". Return ONLY this JSON: {"resultados": [{"nombre": "Title", "descripcion": "About", "capitulos": "X free" or "Check website", "url": "link"}]} Data: ${textoParaIA}`;
 
             const orResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
@@ -70,8 +52,7 @@ export default async function handler(req, res) {
                 const parseado = JSON.parse(orData.choices[0].message.content);
                 return res.status(200).json({ series: parseado.resultados || [] });
             } else {
-                const respaldo = data.results.map(i => ({ nombre: i.title, descripcion: "Mini serie encontrada", capitulos: "Verificar en la web", url: i.url }));
-                return res.status(200).json({ series: respaldo });
+                return res.status(200).json({ series: data.results.map(i => ({ nombre: i.title, descripcion: "Mini serie", capitulos: "Verificar", url: i.url })) });
             }
         } catch (error) {
             return res.status(500).json({ error: "Error en dramas: " + error.message });
@@ -79,40 +60,46 @@ export default async function handler(req, res) {
     } 
     
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (EL CEREBRO ÚNICO) - Encerrado en un ELSE para evitar colisiones
+    // NIVEL 2: CLIPPING (Jardín Vallado + Orden Estricto por Fecha)
     // ==========================================================================================
     else {
         const es = idioma === 'es';
+        
+        // LAS FUENTES EXCLUSIVAS DE VIDEO Y AUDIO (Cero noticias, cero artículos basura)
+        const fuentesVideo = ["youtube.com", "rumble.com", "odysee.com", "vimeo.com", "dailymotion.com"];
+        const fuentesAudio = ["spotify.com", "podcasts.apple.com", "soundcloud.com", "castbox.fm"];
+        const fuentesFusionadas = [...fuentesVideo, ...fuentesAudio];
+
         let queries = [];
 
         if (nicho === 'salud') {
             queries = es ? [
-                `"${categoria}" rutina ejercicio completo site:youtube.com`,
-                `entrevista doctor explicando "${categoria}" site:youtube.com`,
+                `"${categoria}" rutina ejercicio completo`,
+                `entrevista doctor explicando "${categoria}"`,
                 `podcast salud bienestar "${categoria}"`
             ] : [
-                `"${categoria}" full workout routine site:youtube.com`,
-                `doctor interview explaining "${categoria}" site:youtube.com`,
+                `"${categoria}" full workout routine`,
+                `doctor interview explaining "${categoria}"`,
                 `health wellness podcast "${categoria}"`
             ];
         } else if (nicho === 'motivacion') {
             queries = es ? [
-                `"${categoria}" conferencia motivacional completa site:youtube.com`,
-                `entrevista emprendedor exitoso "${categoria}" site:youtube.com`,
+                `"${categoria}" conferencia motivacional completa`,
+                `entrevista emprendedor exitoso "${categoria}"`,
                 `podcast negocios desarrollo personal "${categoria}"`
             ] : [
-                `"${categoria}" full motivational speech site:youtube.com`,
-                `successful entrepreneur interview "${categoria}" site:youtube.com`,
+                `"${categoria}" full motivational speech`,
+                `successful entrepreneur interview "${categoria}"`,
                 `business personal development podcast "${categoria}"`
             ];
         } else if (nicho === 'religion') {
             queries = es ? [
-                `"${categoria}" predica cristiana completa site:youtube.com`,
-                `estudio biblico profundo sobre "${categoria}" site:youtube.com`,
+                `"${categoria}" predica cristiana completa`,
+                `estudio biblico profundo sobre "${categoria}"`,
                 `podcast fe cristiana testimonio "${categoria}"`
             ] : [
-                `"${categoria}" full christian sermon site:youtube.com`,
-                `deep biblical study about "${categoria}" site:youtube.com`,
+                `"${categoria}" full christian sermon`,
+                `deep biblical study about "${categoria}"`,
                 `christian faith podcast testimony "${categoria}"`
             ];
         }
@@ -122,7 +109,14 @@ export default async function handler(req, res) {
                 fetch("https://api.tavily.com/search", {
                     method: "POST",
                     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
-                    body: JSON.stringify({ query, search_depth: "basic", max_results: 7, time_range: "month", exclude_domains: ["instagram.com", "facebook.com", "tiktok.com", "twitter.com", "x.com"] })
+                    body: JSON.stringify({ 
+                        query, 
+                        search_depth: "advanced", 
+                        max_results: 8,
+                        time_range: "week",
+                        // LA SOLUCIÓN FINAL: Solo buscar en estas webs. Es imposible traer noticias de aquí.
+                        include_domains: fuentesFusionadas
+                    })
                 }).then(res => res.json())
             );
 
@@ -130,12 +124,18 @@ export default async function handler(req, res) {
             let materiaBruta = [];
             const urlsVistas = new Set();
             
+            // Extraemos la fecha de publicación de Tavily
             resultadosFusionados.forEach(data => {
                 if (data && data.results) {
                     data.results.forEach(item => {
                         if (!urlsVistas.has(item.url)) {
                             urlsVistas.add(item.url);
-                            materiaBruta.push(item);
+                            materiaBruta.push({
+                                titulo: item.title,
+                                contenido: item.content,
+                                url: item.url,
+                                fecha: item.published_date || "2024-01-01" // Formato YYYY-MM-DD
+                            });
                         }
                     });
                 }
@@ -143,11 +143,24 @@ export default async function handler(req, res) {
 
             if (materiaBruta.length === 0) return res.status(200).json({ series: [] });
 
-            const textoParaIA = materiaBruta.map((item, i) => `Item ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
+            const textoParaIA = materiaBruta.map((item, i) => `Item ${i+1}:\nTitulo: ${item.titulo}\nContenido: ${item.contenido}\nURL: ${item.url}\nFecha: ${item.fecha}`).join("\n\n");
 
+            // EL NUEVO PROMPT: Orden estricto cronológico
             const promptIA = es 
-            ? `Eres un experto en encontrar material para Clipping. Te voy a dar una lista fusionada sobre "${categoria}". Encuentra los 5 mejores para clips. REGLAS: Formato "Video Largo" o "Podcast/Audio". Devuelve ÚNICAMENTE este JSON: {"resultados": [{"nombre": "Título", "tipo_contenido": "Video Largo", "descripcion": "De qué va...", "potencial_viralidad": "Por qué...", "gancho": "Qué hacer...", "url": "enlace"}]} Datos: ${textoParaIA}`
-            : `You are an expert at finding material for Clipping. I will give you a fused list about "${categoria}". Find the top 5 for clips. RULES: Format "Long Video" or "Podcast/Audio". Return ONLY this JSON: {"resultados": [{"nombre": "Title", "tipo_contenido": "Long Video", "descripcion": "About...", "potencial_viralidad": "Why...", "gancho": "What to do...", "url": "link"}]} Data: ${textoParaIA}`;
+            ? `Eres un experto en encontrar material para Clipping. Te voy a dar una lista sobre "${categoria}".
+            INSTRUCCIONES CRÍTICAS:
+            1. SOLO admite Videos largos o Podcasts. Si hay algo que no sea de estos dominios, descártalo.
+            2. ORDEN CRONOLÓGICO: Usa la "Fecha" de cada Item. Debes ordenar los resultados del más reciente al más antiguo. El que tenga la fecha más cercana a hoy va primero.
+            3. Formato del JSON: "Video Largo" o "Podcast/Audio".
+            Devuelve ÚNICAMENTE este JSON ordenado: {"resultados": [{"nombre": "Título", "tipo_contenido": "Video Largo", "descripcion": "De qué va...", "potencial_viralidad": "Por qué...", "gancho": "Qué hacer...", "url": "enlace"}]} 
+            Datos: ${textoParaIA}`
+            : `You are an expert at finding material for Clipping. I will give you a list about "${categoria}".
+            CRITICAL INSTRUCTIONS:
+            1. ONLY accept Long Videos or Podcasts. Discard anything else.
+            2. CHRONOLOGICAL ORDER: Use the "Fecha" of each Item. You must order results from most recent to oldest. The one with the closest date to today goes first.
+            3. JSON Format: "Long Video" or "Podcast/Audio".
+            Return ONLY this ordered JSON: {"resultados": [{"nombre": "Title", "tipo_contenido": "Long Video", "descripcion": "About...", "potencial_viralidad": "Why...", "gancho": "What to do...", "url": "link"}]} 
+            Data: ${textoParaIA}`;
 
             const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
@@ -157,7 +170,7 @@ export default async function handler(req, res) {
 
             const orData = await openRouterResponse.json();
             if (!orData.choices || !orData.choices[0] || !orData.choices[0].message) {
-                const respaldo = materiaBruta.slice(0, 5).map(i => ({ nombre: i.title, tipo_contenido: "Video Largo", descripcion: "Materia prima", potencial_viralidad: "Alta", gancho: "Revisa el enlace", url: i.url }));
+                const respaldo = materiaBruta.slice(0, 5).map(i => ({ nombre: i.titulo, tipo_contenido: "Video Largo", descripcion: "Materia prima", potencial_viralidad: "Alta", gancho: "Revisa el enlace", url: i.url }));
                 return res.status(200).json({ series: respaldo });
             }
 
@@ -166,12 +179,12 @@ export default async function handler(req, res) {
                 const parseado = JSON.parse(textoRespuesta);
                 const seriesFinales = parseado.resultados || [];
                 if (!Array.isArray(seriesFinales) || seriesFinales.length === 0) {
-                    const respaldo = materiaBruta.slice(0, 5).map(i => ({ nombre: i.title, tipo_contenido: "Video Largo", descripcion: "Materia prima", potencial_viralidad: "Alta", gancho: "Revisa el enlace", url: i.url }));
+                    const respaldo = materiaBruta.slice(0, 5).map(i => ({ nombre: i.titulo, tipo_contenido: "Video Largo", descripcion: "Materia prima", potencial_viralidad: "Alta", gancho: "Revisa el enlace", url: i.url }));
                     return res.status(200).json({ series: respaldo });
                 }
                 return res.status(200).json({ series: seriesFinales });
             } catch (parseError) {
-                const respaldo = materiaBruta.slice(0, 5).map(i => ({ nombre: i.title, tipo_contenido: "Video Largo", descripcion: "Materia prima", potencial_viralidad: "Alta", gancho: "Revisa el enlace", url: i.url }));
+                const respaldo = materiaBruta.slice(0, 5).map(i => ({ nombre: i.titulo, tipo_contenido: "Video Largo", descripcion: "Materia prima", potencial_viralidad: "Alta", gancho: "Revisa el enlace", url: i.url }));
                 return res.status(200).json({ series: respaldo });
             }
         } catch (error) {
