@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const tiempo = idioma === 'es' ? 'esta semana' : 'this week';
 
     // ==========================================
-    // NIVEL 1: DRAMAS (Mantiene su lógica propia)
+    // NIVEL 1: DRAMAS
     // ==========================================
     if (nicho === 'dramas') {
         try {
@@ -36,17 +36,18 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (La Santísima Trinidad: YouTube + Rumble + Odysee)
+    // NIVEL 2: CLIPPING (Ley de Hierro: SOLO Videos y Audio. Cero Artículos, Cero Instagram)
     // ==========================================================================================
     let queryTavily = "";
     
-    // Añadimos Rumble y Odysee directamente en la búsqueda para que Tavily priorice esas fuentes
+    // LEY DE HIERRO EN LA BÚSQUEDA: Quitamos "blog" y "noticia". 
+    // Triple bloqueo a Instagram por si Tavily es terco.
     if (nicho === 'salud') {
-        queryTavily = `${categoria} ${tiempo} (youtube OR rumble OR odysee OR podcast OR blog) ${idiomaCompleto} -tiktok -reels -shorts -instagram -facebook`;
+        queryTavily = `${categoria} ${tiempo} (youtube OR rumble OR odysee OR podcast) ${idiomaCompleto} -tiktok -reels -shorts -instagram -"www.instagram.com" -"instagram.com" -facebook`;
     } else if (nicho === 'motivacion') {
-        queryTavily = `${categoria} ${tiempo} (youtube OR rumble OR odysee OR podcast OR blog) ${idiomaCompleto} -tiktok -reels -shorts -instagram -facebook`;
+        queryTavily = `${categoria} ${tiempo} (youtube OR rumble OR odysee OR podcast) ${idiomaCompleto} -tiktok -reels -shorts -instagram -"www.instagram.com" -"instagram.com" -facebook`;
     } else if (nicho === 'religion') {
-        queryTavily = `${categoria} ${tiempo} (youtube OR rumble OR odysee OR podcast OR sermon) ${idiomaCompleto} -tiktok -reels -shorts -instagram -facebook`;
+        queryTavily = `${categoria} ${tiempo} (youtube OR rumble OR odysee OR podcast OR sermon) ${idiomaCompleto} -tiktok -reels -shorts -instagram -"www.instagram.com" -"instagram.com" -facebook`;
     }
 
     try {
@@ -66,41 +67,52 @@ export default async function handler(req, res) {
             return res.status(200).json({ series: [] });
         }
 
-        // Red de seguridad por si la IA se confunde
-        const respaldoSeguro = tavilyData.results.map(item => ({
+        // Filtrado físico por si acaso Tavily fue un desastre y dejó pasar algo
+        const resultadosLimpios = tavilyData.results.filter(item => {
+            const url = item.url.toLowerCase();
+            // Destruir cualquier enlace de Instagram, TikTok o Facebook que haya pasado
+            if (url.includes('instagram.com') || url.includes('tiktok.com') || url.includes('facebook.com')) return false;
+            return true;
+        });
+
+        if (resultadosLimpios.length === 0) {
+            return res.status(200).json({ series: [] });
+        }
+
+        const respaldoSeguro = resultadosLimpios.map(item => ({
             nombre: item.title,
             tipo_contenido: "Video Largo",
-            descripcion: "Materia prima encontrada. Revisa el enlace.",
+            descripcion: "Video o audio encontrado. Revisa el enlace.",
             potencial_viralidad: "Por verificar",
             gancho: "Revisa el contenido para encontrar el ángulo.",
             url: item.url
         }));
 
-        const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
+        const materiaPrima = resultadosLimpios.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // CEREBRO ESTRATEGA: Actualizado para saber que viene de Rumble u Odysee
+        // CEREBRO ESTRATEGA (Doble Candado)
         const promptGroq = idioma === 'es' 
-        ? `Eres un Estratega de Clipping Experto. Analiza estos resultados de la última semana sobre "${categoria}".
-        Las fuentes principales son YouTube, Rumble y Odysee (videos largos), además de podcasts y blogs.
-        REGLAS ESTRICTAS:
-        1. FORMATO: Identifica si es "Video Largo" (YouTube/Rumble/Odysee), "Podcast/Audio", o "Artículo/Noticia".
-        2. LEY ESTRICTA: DESCARTA cualquier cosa que sea de TikTok, Reels, Shorts, Instagram, Facebook o menores a 15 minutos.
-        3. DESCRIPCIÓN: Explica claramente de qué trata el contenido (2 líneas).
-        4. POTENCIAL VIRAL: Explica por qué este material sin censura o de larga duración ganará atención (1 línea).
-        5. GANCHO: Si es video, di qué minuto clippear. Si es artículo, di cómo convertirlo en video.
+        ? `Eres un Estratega de Clipping Experto. Analiza estos resultados sobre "${categoria}".
+        REGLAS ABSOLUTAS (SI FALLAS AQUÍ, ESTÁS DESPEDIDO):
+        1. CERO ARTÍCULOS: Si el resultado es un blog, una noticia, o un texto escrito sin video/audio, BÓRRALO. NO LO INCLUYAS EN EL JSON.
+        2. DOBLE CANDADO A INSTAGRAM: Si el URL contiene "instagram", DESTRÚYELO.
+        3. FORMATO ÚNICO: Solo se permite "Video Largo" (YouTube/Rumble/Odysee) o "Podcast/Audio".
+        4. DESCRIPCIÓN: Explica de qué trata el video/audio (2 líneas).
+        5. POTENCIAL VIRAL: Por qué este video ganará atención (1 línea).
+        6. GANCHO: Di qué minuto clippear.
         Devuelve ÚNICAMENTE un JSON array con máximo 5 resultados EXACTAMENTE con esta estructura:
-        {"nombre": "Título", "tipo_contenido": "Video Largo" o "Podcast/Audio" o "Artículo/Noticia", "descripcion": "De qué va...", "potencial_viralidad": "Por qué ganará...", "gancho": "Qué hacer...", "url": "enlace"}
+        {"nombre": "Título", "tipo_contenido": "Video Largo" o "Podcast/Audio", "descripcion": "De qué va...", "potencial_viralidad": "Por qué ganará...", "gancho": "Qué hacer...", "url": "enlace"}
         Datos: ${materiaPrima}`
-        : `You are an Expert Clipping Strategist. Analyze these results from the past week about "${categoria}".
-        Main sources are YouTube, Rumble, and Odysee (long videos), plus podcasts and blogs.
-        STRICT RULES:
-        1. FORMAT: Identify if it's "Long Video" (YouTube/Rumble/Odysee), "Podcast/Audio", or "Article/News".
-        2. STRICT LAW: DISCARD anything from TikTok, Reels, Shorts, Instagram, Facebook, or under 15 mins.
-        3. DESCRIPTION: Explain clearly what the content is about (2 lines).
-        4. VIRAL POTENTIAL: Explain why this uncensored/long-form material will gain attention (1 line).
-        5. HOOK: If it's a video, say what minute to clip. If it's an article, say how to turn it into a video.
+        : `You are an Expert Clipping Strategist. Analyze these results about "${categoria}".
+        ABSOLUTE RULES (IF YOU FAIL HERE, YOU ARE FIRED):
+        1. ZERO ARTICLES: If the result is a blog, news, or written text without video/audio, DELETE IT. DO NOT INCLUDE IT IN THE JSON.
+        2. DOUBLE LOCK ON INSTAGRAM: If the URL contains "instagram", DESTROY IT.
+        3. ONLY FORMAT ALLOWED: "Long Video" (YouTube/Rumble/Odysee) or "Podcast/Audio".
+        4. DESCRIPTION: Explain what the video/audio is about (2 lines).
+        5. VIRAL POTENTIAL: Why this video will gain attention (1 line).
+        6. HOOK: Say what minute to clip.
         Return ONLY a JSON array with max 5 results EXACTLY with this structure:
-        {"nombre": "Title", "tipo_contenido": "Long Video" or "Podcast/Audio" or "Article/News", "descripcion": "What it's about...", "potencial_viralidad": "Why it will win...", "gancho": "What to do...", "url": "link"}
+        {"nombre": "Title", "tipo_contenido": "Long Video" or "Podcast/Audio", "descripcion": "What it's about...", "potencial_viralidad": "Why it will win...", "gancho": "What to do...", "url": "link"}
         Data: ${materiaPrima}`;
 
         const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -128,11 +140,21 @@ export default async function handler(req, res) {
             if (!Array.isArray(seriesAnalizadas)) {
                 return res.status(200).json({ series: respaldoSeguro });
             }
+
+            // TERCER CANDADO: Filtrado físico final en el servidor antes de enviar a la página
+            const filtroFinal = seriesAnalizadas.filter(item => {
+                const url = item.url.toLowerCase();
+                if (url.includes('instagram') || url.includes('tiktok') || url.includes('facebook')) return false;
+                // Rechazar artículos que la IA haya dejado pasar por error
+                if (item.tipo_contenido && (item.tipo_contenido.toLowerCase().includes('artíc') || item.tipo_contenido.toLowerCase().includes('news'))) return false;
+                return true;
+            });
+
+            return res.status(200).json({ series: filtroFinal });
+
         } catch (parseError) {
             return res.status(200).json({ series: respaldoSeguro });
         }
-
-        return res.status(200).json({ series: seriesAnalizadas });
 
     } catch (error) {
         console.error("Error general en clipping:", error);
