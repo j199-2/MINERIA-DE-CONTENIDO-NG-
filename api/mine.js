@@ -3,16 +3,16 @@ export default async function handler(req, res) {
 
     const { categoria, nicho, idioma } = req.body;
     const tavilyKey = process.env.TAVILY_API_KEY;
-    const groqKey = process.env.GROQ_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY; // Nueva llave
 
-    if (!tavilyKey || !groqKey) {
-        return res.status(500).json({ error: "Error: Faltan las claves API en Vercel." });
+    if (!tavilyKey || !geminiKey) {
+        return res.status(500).json({ error: "Error: Faltan las claves API (Tavily o Gemini) en Vercel." });
     }
 
     const idiomaCompleto = idioma === 'es' ? 'español' : 'english';
 
     // ==========================================
-    // NIVEL 1: DRAMAS (Se mantiene igual, funciona perfecto)
+    // NIVEL 1: DRAMAS
     // ==========================================
     if (nicho === 'dramas') {
         try {
@@ -35,20 +35,20 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (Estrategia de Abundancia y Curaduría)
+    // NIVEL 2: CLIPPING (Tavily busca + Gemini Curador con JSON Garantizado)
     // ==========================================================================================
     
-    // Búsqueda abierta. Pedimos 15 resultados para que la IA tenga de dónde elegir.
     let queryTavily = `${categoria} video largo o podcast reciente ${idiomaCompleto} -tiktok -reels -shorts -instagram -facebook`;
 
     try {
+        // 1. TAVILY: Extraer materia prima
         const tavilyResponse = await fetch("https://api.tavily.com/search", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
             body: JSON.stringify({ 
                 query: queryTavily, 
                 search_depth: "advanced", 
-                max_results: 15, // Pedimos más material bruto
+                max_results: 15,
                 time_range: "week"
             })
         });
@@ -58,53 +58,7 @@ export default async function handler(req, res) {
             return res.status(200).json({ series: [] });
         }
 
-        const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
-
-        // CEREBRO CURADOR: Ahora es un experto que separa el grano de la paja
-        const promptGroq = idioma === 'es' 
-        ? `Eres un Curador de Contenido Experto para creadores. Te voy a dar 15 resultados de búsqueda sobre "${categoria}".
-        Tu trabajo es encontrar las 3 a 5 piezas de contenido MÁS VALIOSAS para hacer clipping (recortes para TikTok/Reels).
-        
-        INSTRUCCIONES DE CURADURÍA:
-        1. IGNORA basura: No incluyas nada de TikTok, Reels, Shorts, Instagram o Facebook.
-        2. FORMATO: 
-           - Si es un video/podcast, etiquétalo como "Video Largo" o "Podcast/Audio".
-           - Si es un ARTÍCULO o NOTICIA muy buena que sirva para hacer un video Faceless (sin cara), etiquétalo como "Artículo/Noticia".
-        3. RELEVANCIA: Ignora resultados que no tengan nada que ver con "${categoria}".
-        
-        De los que selecciones, dame una descripción corta, por qué es viral y qué clippear o cómo usarlo.
-        Devuelve ÚNICAMENTE un JSON array con los seleccionados:
-        {"nombre": "Título", "tipo_contenido": "Video Largo" o "Podcast/Audio" o "Artículo/Noticia", "descripcion": "De qué va...", "potencial_viralidad": "Por qué...", "gancho": "Qué hacer...", "url": "enlace"}
-        Datos: ${materiaPrima}`
-        : `You are an Expert Content Curator for creators. I will give you 15 search results about "${categoria}".
-        Your job is to find the 3 to 5 MOST VALUABLE pieces of content for clipping.
-        
-        CURATION INSTRUCTIONS:
-        1. IGNORE trash: Do not include anything from TikTok, Reels, Shorts, Instagram, or Facebook.
-        2. FORMAT: 
-           - If it's a video/podcast, label it "Long Video" or "Podcast/Audio".
-           - If it's a very good ARTICLE or NEWS that can be used for a Faceless video, label it "Article/News".
-        3. RELEVANCE: Ignore results that have nothing to do with "${categoria}".
-        
-        For the ones you select, give a short description, why it's viral, and what to clip.
-        Return ONLY a JSON array with the selected ones:
-        {"nombre": "Title", "tipo_contenido": "Long Video" or "Podcast/Audio" or "Article/News", "descripcion": "What it's about...", "potencial_viralidad": "Why...", "gancho": "What to do...", "url": "link"}
-        Data: ${materiaPrima}`;
-
-        const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
-            body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
-                messages: [{ role: "user", content: promptGroq }],
-                temperature: 0.3
-            })
-        });
-
-        const groqData = await groqResponse.json();
-        
-        // Red de seguridad inteligente: Si la IA no devuelve nada útil, mostramos los primeros 5 de Tavily
-        // para que la pantalla NUNCA esté vacía.
+        // Respaldo por si Gemini falla
         const respaldoSeguro = tavilyData.results.slice(0, 5).map(item => ({
             nombre: item.title,
             tipo_contenido: "Contenido Encontrado",
@@ -114,31 +68,87 @@ export default async function handler(req, res) {
             url: item.url
         }));
 
-        if (!groqData.choices || !groqData.choices[0] || !groqData.choices[0].message) {
+        const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
+
+        // 2. GEMINI: El Curador Experto
+        const promptGemini = idioma === 'es' 
+        ? `Eres un Curador de Contenido Experto para creadores de TikTok/Reels. Te voy a dar 15 resultados de búsqueda sobre "${categoria}".
+        Tu trabajo es encontrar las 3 a 5 piezas de contenido MÁS VALIOSAS para hacer clipping (recortes).
+        
+        INSTRUCCIONES DE CURADURÍA:
+        1. IGNORA basura: No incluyas nada de TikTok, Reels, Shorts, Instagram o Facebook.
+        2. FORMATO: 
+           - Si es un video/podcast largo, etiquétalo como "Video Largo" o "Podcast/Audio".
+           - Si es un ARTÍCULO o NOTICIA excelente que sirva para hacer un video Faceless (sin cara), etiquétalo como "Artículo/Noticia".
+        3. RELEVANCIA: Ignora resultados que no tengan nada que ver con "${categoria}".
+        
+        De los que selecciones, dame una descripción corta, por qué es viral y qué clippear.
+        Devuelve ÚNICAMENTE un JSON array con los seleccionados:
+        {"nombre": "Título", "tipo_contenido": "Video Largo" o "Podcast/Audio" o "Artículo/Noticia", "descripcion": "De qué va...", "potencial_viralidad": "Por qué...", "gancho": "Qué hacer...", "url": "enlace"}
+        Datos: ${materiaPrima}`
+        : `You are an Expert Content Curator for TikTok/Reels creators. I will give you 15 search results about "${categoria}".
+        Your job is to find the 3 to 5 MOST VALUABLE pieces of content for clipping.
+        
+        CURATION INSTRUCTIONS:
+        1. IGNORE trash: Do not include anything from TikTok, Reels, Shorts, Instagram, or Facebook.
+        2. FORMAT: 
+           - If it's a long video/podcast, label it "Long Video" or "Podcast/Audio".
+           - If it's an excellent ARTICLE or NEWS that can be used for a Faceless video, label it "Article/News".
+        3. RELEVANCE: Ignore results that have nothing to do with "${categoria}".
+        
+        For the ones you select, give a short description, why it's viral, and what to clip.
+        Return ONLY a JSON array with the selected ones:
+        {"nombre": "Title", "tipo_contenido": "Long Video" or "Podcast/Audio" or "Article/News", "descripcion": "What it's about...", "potencial_viralidad": "Why...", "gancho": "What to do...", "url": "link"}
+        Data: ${materiaPrima}`;
+
+        // Llamada a la API de Gemini (Usando el modelo Flash que es rapidísimo y gratis)
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        
+        const geminiResponse = await fetch(geminiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: promptGemini }] }],
+                generationConfig: {
+                    temperature: 0.4,
+                    // LA MAGIA DE GEMINI: Le obligamos a que la respuesta SEA un JSON válido, sin textos extra
+                    responseMimeType: "application/json" 
+                }
+            })
+        });
+
+        const geminiData = await geminiResponse.json();
+        
+        // Extraer el texto de la respuesta de Gemini
+        let textoRespuesta = "";
+        if (geminiData.candidates && geminiData.candidates[0] && geminiData.candidates[0].content && geminiData.candidates[0].content.parts) {
+            textoRespuesta = geminiData.candidates[0].content.parts[0].text || "[]";
+        } else {
+            // Si Gemini tiene un error de seguridad o de formato, lanzamos el respaldo
+            console.error("Error en la estructura de Gemini:", JSON.stringify(geminiData));
             return res.status(200).json({ series: respaldoSeguro });
         }
 
-        const textoRespuesta = groqData.choices[0].message.content || "[]";        
-        const jsonLimpio = textoRespuesta.replace(/```json/g, '').replace(/```/g, '').trim();
-        
         let seriesAnalizadas;
         try {
+            // Como usamos responseMimeType, Gemini ya no pone los ```json```, pero limpiamos por si acaso
+            const jsonLimpio = textoRespuesta.replace(/```json/g, '').replace(/```/g, '').trim();
             seriesAnalizadas = JSON.parse(jsonLimpio);
             
-            // Si la IA se puso muy estricta y devolvió un array vacío, usamos el respaldo
+            // Si por alguna razón devuelve vacío, lanzamos el respaldo
             if (!Array.isArray(seriesAnalizadas) || seriesAnalizadas.length === 0) {
                 return res.status(200).json({ series: respaldoSeguro });
             }
             
         } catch (parseError) {
-            // Si la IA se equivoca de formato, usamos el respaldo
+            console.error("Error parseando JSON de Gemini:", parseError);
             return res.status(200).json({ series: respaldoSeguro });
         }
 
         return res.status(200).json({ series: seriesAnalizadas });
 
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Error general:", error);
         return res.status(500).json({ error: "Error de conexión: " + error.message });
     }
 }
