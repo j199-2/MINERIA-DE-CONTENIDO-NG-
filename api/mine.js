@@ -10,13 +10,12 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 1: DRAMAS (El Jardín Vallado de 30+ Páginas)
+    // NIVEL 1: DRAMAS (Jardín Vallado + Modo Investigador de Episodios)
     // ==========================================================================================
     if (nicho === 'dramas') {
         const idiomaCompleto = idioma === 'es' ? 'español' : 'english';
-        const query = `"${categoria}" mini serie`; // Búsqueda ultra simple
+        const query = `"${categoria}" mini serie`;
         
-        // LAS 30+ FUENTES EXCLUSIVAS
         const fuentesDrama = [
             "shortmax.tv", "dramaboxdb.com", "reelshort.com", "free-reels.com", "flextv.cc", 
             "goodshort.com", "moboreels.com", "topshort.tv", "serealplus.com", "shorttv.com", 
@@ -28,7 +27,6 @@ export default async function handler(req, res) {
         ];
 
         try {
-            // Tavily busca OBLIGATORIAMENTE en esas páginas
             const response = await fetch("https://api.tavily.com/search", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
@@ -36,30 +34,35 @@ export default async function handler(req, res) {
                     query, 
                     search_depth: "advanced", 
                     max_results: 10,
-                    include_domains: fuentesDrama // LA MAGIA: Solo busca aquí
+                    include_domains: fuentesDrama
                 })
             });
             const data = await response.json();
             if (!data.results || data.results.length === 0) return res.status(200).json({ series: [] });
 
-            // Formateamos para que OpenRouter nos haga la tarjeta bonita
             const textoParaIA = data.results.map((item, i) => `Serie ${i+1}:\nTitulo: ${item.title}\nTexto: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
+            // MODO INVESTIGADOR: Estricto sobre los episodios gratis
             const promptDrama = idioma === 'es' 
-            ? `Analiza estas series de "${categoria}" de páginas de mini dramas.
-            Devuelve ÚNICAMENTE un JSON: {"resultados": [{"nombre": "Título limpio", "descripcion": "De qué trata en 2 líneas seductoras", "capitulos": "Ej: Primeros 5 gratis", "url": "enlace"}]}
-            Si el texto no dice cuántos gratis son, inventa uno realista (ej: "5+ Caps gratis").
+            ? `Eres un extractor de datos de Mini Dramas. Analiza estos resultados de "${categoria}".
+            INSTRUCCIÓN CRÍTICA SOBRE EPISODIOS:
+            1. Lee el texto buscando palabras clave: "free", "gratis", "episodios", "episodes", o números seguidos de esas palabras (ej: "5 free", "10 episodios gratis").
+            2. Si encuentras el dato exacto, escríbelo tal cual (Ej: "5 episodios gratis" o "Primeros 10 gratis").
+            3. SI EL TEXTO NO DICE NADA SOBRE EPISODIOS GRATIS, NO INVENTES. Escribe exactamente: "Verificar en la web".
+            Devuelve ÚNICAMENTE un JSON: {"resultados": [{"nombre": "Título limpio", "descripcion": "De qué trata en 2 líneas", "capitulos": "X episodios gratis" o "Verificar en la web", "url": "enlace"}]}
             Datos: ${textoParaIA}`
-            : `Analyze these "${categoria}" series from mini drama sites.
-            Return ONLY a JSON: {"resultados": [{"nombre": "Clean title", "descripcion": "What it's about in 2 catchy lines", "capitulos": "Eg: First 5 free", "url": "link"}]}
-            If text doesn't say free eps, invent a realistic one (eg: "5+ Free Eps").
+            : `You are a Mini Drama data extractor. Analyze these results for "${categoria}".
+            CRITICAL INSTRUCTION ON EPISODES:
+            1. Read the text looking for keywords: "free", "episodes", or numbers next to them (eg: "5 free", "10 free episodes").
+            2. If you find the exact data, write it exactly (Eg: "5 free episodes" or "First 10 free").
+            3. IF THE TEXT SAYS NOTHING ABOUT FREE EPISODES, DO NOT INVENT. Write exactly: "Check website".
+            Return ONLY a JSON: {"resultados": [{"nombre": "Clean title", "descripcion": "What it's about in 2 lines", "capitulos": "X free episodes" or "Check website", "url": "link"}]}
             Data: ${textoParaIA}`;
 
-            // Llamamos a OpenRouter para que formatee
             const orResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openRouterKey}`, "HTTP-Referer": "https://nextgen-creators.vercel.app", "X-Title": "NextGen Creators" },
-                body: JSON.stringify({ model: "meta-llama/llama-3.1-8b-instruct:free", messages: [{ role: "user", content: promptDrama }], temperature: 0.5, response_format: { type: "json_object" } })
+                body: JSON.stringify({ model: "meta-llama/llama-3.1-8b-instruct:free", messages: [{ role: "user", content: promptDrama }], temperature: 0.2, response_format: { type: "json_object" } })
             });
 
             const orData = await orResponse.json();
@@ -67,8 +70,7 @@ export default async function handler(req, res) {
                 const parseado = JSON.parse(orData.choices[0].message.content);
                 return res.status(200).json({ series: parseado.resultados || [] });
             } else {
-                // Respaldo si la IA falla
-                const respaldo = data.results.map(i => ({ nombre: i.title, descripcion: "Mini serie encontrada", capitulos: "Primeros eps gratis", url: i.url }));
+                const respaldo = data.results.map(i => ({ nombre: i.title, descripcion: "Mini serie encontrada", capitulos: "Verificar en la web", url: i.url }));
                 return res.status(200).json({ series: respaldo });
             }
         } catch (error) {
@@ -77,7 +79,7 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (EL CEREBRO ÚNICO - Sin cambios, funciona perfecto)
+    // NIVEL 2: CLIPPING (EL CEREBRO ÚNICO - Sin cambios, perfecto)
     // ==========================================================================================
     const es = idioma === 'es';
     let queries = [];
