@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const tiempo = idioma === 'es' ? 'esta semana' : 'this week';
 
     // ==========================================
-    // NIVEL 1: DRAMAS (Sin cambios)
+    // NIVEL 1: DRAMAS (Mantiene su lógica propia)
     // ==========================================
     if (nicho === 'dramas') {
         try {
@@ -27,11 +27,7 @@ export default async function handler(req, res) {
             if (!data.results) return res.status(200).json({ series: [] });
             
             const series = data.results.map(item => ({ 
-                nombre: item.title, 
-                genero: categoria, 
-                capitulos: "5+", 
-                viralidad: "Alta", 
-                url: item.url 
+                nombre: item.title, genero: categoria, capitulos: "5+", viralidad: "Alta", url: item.url 
             }));
             return res.status(200).json({ series });
         } catch (error) {
@@ -40,13 +36,18 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (Ley Estricta Anti-Instagram)
+    // NIVEL 2: CLIPPING (La Santísima Trinidad: YouTube + Rumble + Odysee)
     // ==========================================================================================
     let queryTavily = "";
-    // LEY ESTRICTA: Se agregó "-instagram" a todas las búsquedas para bloquear esa red
-    if (nicho === 'salud') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR noticia) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
-    else if (nicho === 'motivacion') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR noticia) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
-    else if (nicho === 'religion') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR sermon) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
+    
+    // Añadimos Rumble y Odysee directamente en la búsqueda para que Tavily priorice esas fuentes
+    if (nicho === 'salud') {
+        queryTavily = `${categoria} ${tiempo} (youtube OR rumble OR odysee OR podcast OR blog) ${idiomaCompleto} -tiktok -reels -shorts -instagram -facebook`;
+    } else if (nicho === 'motivacion') {
+        queryTavily = `${categoria} ${tiempo} (youtube OR rumble OR odysee OR podcast OR blog) ${idiomaCompleto} -tiktok -reels -shorts -instagram -facebook`;
+    } else if (nicho === 'religion') {
+        queryTavily = `${categoria} ${tiempo} (youtube OR rumble OR odysee OR podcast OR sermon) ${idiomaCompleto} -tiktok -reels -shorts -instagram -facebook`;
+    }
 
     try {
         const tavilyResponse = await fetch("https://api.tavily.com/search", {
@@ -65,40 +66,41 @@ export default async function handler(req, res) {
             return res.status(200).json({ series: [] });
         }
 
-        // Red de seguridad por si Groq falla
+        // Red de seguridad por si la IA se confunde
         const respaldoSeguro = tavilyData.results.map(item => ({
             nombre: item.title,
-            tipo_contenido: "Desconocido",
+            tipo_contenido: "Video Largo",
             descripcion: "Materia prima encontrada. Revisa el enlace.",
             potencial_viralidad: "Por verificar",
             gancho: "Revisa el contenido para encontrar el ángulo.",
-            estado: "⚠️ Sin análisis",
             url: item.url
         }));
 
         const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // PROMPT: Se añadió Instagram a la lista negra de la IA
+        // CEREBRO ESTRATEGA: Actualizado para saber que viene de Rumble u Odysee
         const promptGroq = idioma === 'es' 
-        ? `Eres un Estratega de Contenido Experto. Analiza estos resultados de la última semana sobre "${categoria}".
+        ? `Eres un Estratega de Clipping Experto. Analiza estos resultados de la última semana sobre "${categoria}".
+        Las fuentes principales son YouTube, Rumble y Odysee (videos largos), además de podcasts y blogs.
         REGLAS ESTRICTAS:
-        1. IDENTIFICA EL FORMATO: Debes decir si es "Video Largo/Podcast" o "Artículo/Noticia".
-        2. LEY ESTRICTA: DESCARTA cualquier cosa que sea de TikTok, Reels, Shorts, Instagram o menores a 15 minutos.
+        1. FORMATO: Identifica si es "Video Largo" (YouTube/Rumble/Odysee), "Podcast/Audio", o "Artículo/Noticia".
+        2. LEY ESTRICTA: DESCARTA cualquier cosa que sea de TikTok, Reels, Shorts, Instagram, Facebook o menores a 15 minutos.
         3. DESCRIPCIÓN: Explica claramente de qué trata el contenido (2 líneas).
-        4. POTENCIAL VIRAL: Explica por qué la gente haría clic o compartiría esto (1 línea).
+        4. POTENCIAL VIRAL: Explica por qué este material sin censura o de larga duración ganará atención (1 línea).
         5. GANCHO: Si es video, di qué minuto clippear. Si es artículo, di cómo convertirlo en video.
         Devuelve ÚNICAMENTE un JSON array con máximo 5 resultados EXACTAMENTE con esta estructura:
-        {"nombre": "Título", "tipo_contenido": "Video Largo" o "Artículo/Noticia", "descripcion": "De qué va...", "potencial_viralidad": "Por qué explotará...", "gancho": "Qué hacer...", "url": "enlace"}
+        {"nombre": "Título", "tipo_contenido": "Video Largo" o "Podcast/Audio" o "Artículo/Noticia", "descripcion": "De qué va...", "potencial_viralidad": "Por qué ganará...", "gancho": "Qué hacer...", "url": "enlace"}
         Datos: ${materiaPrima}`
-        : `You are an Expert Content Strategist. Analyze these results from the past week about "${categoria}".
+        : `You are an Expert Clipping Strategist. Analyze these results from the past week about "${categoria}".
+        Main sources are YouTube, Rumble, and Odysee (long videos), plus podcasts and blogs.
         STRICT RULES:
-        1. IDENTIFY FORMAT: You must say if it is "Long Video/Podcast" or "Article/News".
-        2. STRICT LAW: DISCARD anything from TikTok, Reels, Shorts, Instagram, or under 15 mins.
+        1. FORMAT: Identify if it's "Long Video" (YouTube/Rumble/Odysee), "Podcast/Audio", or "Article/News".
+        2. STRICT LAW: DISCARD anything from TikTok, Reels, Shorts, Instagram, Facebook, or under 15 mins.
         3. DESCRIPTION: Explain clearly what the content is about (2 lines).
-        4. VIRAL POTENTIAL: Explain why people would click or share this (1 line).
+        4. VIRAL POTENTIAL: Explain why this uncensored/long-form material will gain attention (1 line).
         5. HOOK: If it's a video, say what minute to clip. If it's an article, say how to turn it into a video.
         Return ONLY a JSON array with max 5 results EXACTLY with this structure:
-        {"nombre": "Title", "tipo_contenido": "Long Video" or "Article/News", "descripcion": "What it's about...", "potencial_viralidad": "Why it will go viral...", "gancho": "What to do...", "url": "link"}
+        {"nombre": "Title", "tipo_contenido": "Long Video" or "Podcast/Audio" or "Article/News", "descripcion": "What it's about...", "potencial_viralidad": "Why it will win...", "gancho": "What to do...", "url": "link"}
         Data: ${materiaPrima}`;
 
         const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
