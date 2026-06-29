@@ -36,6 +36,11 @@
         .btn-explore { background: var(--brand-gradient); border: none; color: white; padding: 20px; font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 900; border-radius: 15px; cursor: pointer; text-transform: uppercase; letter-spacing: 3px; box-shadow: 0 0 40px rgba(41, 121, 255, 0.4); transition: all 0.3s ease; }
         .btn-explore:hover { transform: translateY(-3px); box-shadow: 0 10px 50px rgba(156, 39, 176, 0.5); filter: brightness(1.1); }
         .btn-explore:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        
+        /* BOTÓN VOLVER */
+        .btn-back { background: transparent; border: 2px solid var(--text-muted); color: var(--text-muted); padding: 15px 30px; font-family: 'Orbitron', sans-serif; font-size: 1rem; font-weight: 700; border-radius: 15px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; margin: 0 auto 40px auto; display: block; text-align: center; width: fit-content; }
+        .btn-back:hover { border-color: var(--brand-blue); color: var(--brand-blue); transform: translateY(-2px); }
+
         #resultados { margin-top: 50px; display: none; opacity: 0; transition: opacity 0.5s ease; }
         #resultados.show { display: block; opacity: 1; }
         .grid-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 25px; }
@@ -61,16 +66,70 @@
         .btn-mina:hover { transform: scale(1.02); box-shadow: 0 8px 30px rgba(156, 39, 176, 0.5); }
         #loading { text-align: center; font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--brand-blue); margin-top: 60px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity:0.4; } }
+
+        /* CARRUSEL ONBOARDING */
+        .onboarding-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 9, 0.95); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(10px); }
+        .onboarding-container { width: 90%; max-width: 500px; background: linear-gradient(160deg, rgba(30, 30, 50, 0.9), rgba(10, 10, 20, 0.9)); border: 1px solid var(--glass-border); border-radius: 20px; padding: 40px; text-align: center; position: relative; box-shadow: 0 0 60px rgba(41, 121, 255, 0.2); }
+        .onboarding-icon { font-size: 4rem; margin-bottom: 20px; }
+        .onboarding-title { font-family: 'Orbitron', sans-serif; font-size: 1.8rem; margin-bottom: 20px; background: var(--brand-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .onboarding-text { color: var(--text-muted); line-height: 1.8; margin-bottom: 30px; font-size: 1.05rem; }
+        .onboarding-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+        .arrow-btn { background: transparent; border: 2px solid var(--brand-purple); color: var(--brand-purple); width: 50px; height: 50px; border-radius: 50%; font-size: 1.5rem; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; }
+        .arrow-btn:hover { background: var(--brand-purple); color: white; }
+        .dots { display: flex; gap: 10px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--glass-border); cursor: pointer; transition: 0.3s; }
+        .dot.active { background: var(--brand-blue); transform: scale(1.2); }
+        .btn-start { background: var(--brand-gradient); border: none; color: white; padding: 15px 40px; font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 900; border-radius: 50px; cursor: pointer; margin-top: 20px; text-transform: uppercase; box-shadow: 0 0 30px rgba(41, 121, 255, 0.5); }
+        .btn-start:hover { transform: scale(1.05); }
+
         @media (max-width: 600px) { .brand-next { font-size: 3rem; } .brand-gen { font-size: 1.8rem; letter-spacing: 8px; margin-left: 8px; } .tool-title { font-size: 1.8rem; } .niche-tabs { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
+    <!-- CARRUSEL DE INICIO -->
+    <div class="onboarding-overlay" id="onboardingOverlay">
+        <div class="onboarding-container">
+            <div id="slide-0" class="slide">
+                <div class="onboarding-icon">⛏️</div>
+                <h2 class="onboarding-title">Bienvenido a la Mina</h2>
+                <p class="onboarding-text">Deja de perder horas buscando qué subir a tus redes. Somos tu herramienta de inteligencia artificial que extrae el contenido más viral de internet en segundos.</p>
+            </div>
+            <div id="slide-1" class="slide" style="display: none;">
+                <div class="onboarding-icon">🎬✂️</div>
+                <h2 class="onboarding-title">MODO CLIPPING</h2>
+                <p class="onboarding-text">Selecciona Salud, Motivación o Religión. Nuestra IA buscará en YouTube, Rumble y Podcasts, analizando qué minutos cortar y por qué se hará viral. ¡Sé el primero en publicar!</p>
+            </div>
+            <div id="slide-2" class="slide" style="display: none;">
+                <div class="onboarding-icon">📺🎁</div>
+                <h2 class="onboarding-title">MODO SERIES</h2>
+                <p class="onboarding-text">Busca en más de 30 plataformas de Mini Series (ShortMax, ReelShort, etc.). Te diremos de qué trata la serie y cuántos capítulos te regalan gratis para que los monetices.</p>
+            </div>
+            <div id="slide-3" class="slide" style="display: none;">
+                <div class="onboarding-icon">🚀</div>
+                <h2 class="onboarding-title">¿LISTO?</h2>
+                <p class="onboarding-text">Elige tu nicho, dale a explorar y domina las tendencias. ¡Empieza a minar ahora mismo!</p>
+                <button class="btn-start" onclick="cerrarOnboarding()">Comenzar</button>
+            </div>
+
+            <div class="onboarding-nav" id="onboardingNav">
+                <button class="arrow-btn" onclick="cambiarSlide(-1)">❮</button>
+                <div class="dots">
+                    <span class="dot active" onclick="irASlide(0)"></span>
+                    <span class="dot" onclick="irASlide(1)"></span>
+                    <span class="dot" onclick="irASlide(2)"></span>
+                    <span class="dot" onclick="irASlide(3)"></span>
+                </div>
+                <button class="arrow-btn" onclick="cambiarSlide(1)">❯</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="lang-switch">
             <button class="lang-btn active" id="btn-es" onclick="setLanguage('es')">ES</button>
             <button class="lang-btn" id="btn-en" onclick="setLanguage('en')">EN</button>
         </div>
-        <header class="hero">
+        <header class="hero" id="mainUI">
             <div class="brand-text-logo">
                 <div class="brand-next">NEXTGEN</div>
                 <div class="brand-gen">CREATORS</div>
@@ -79,14 +138,14 @@
             <h1 class="tool-title" id="title">Minería de Contenido</h1>
             <p class="tool-subtitle" id="subtitle">Elige tu nicho, selecciona la categoría y extrae material viral largo para dividir, hacer clipping y monetizar.</p>
             
-            <div class="niche-tabs">
+            <div class="niche-tabs" id="tabsContainer">
                 <div class="niche-tab active-dramas" id="tab-dramas" onclick="switchNiche('dramas')">🎬 Mini Series</div>
                 <div class="niche-tab" id="tab-salud" onclick="switchNiche('salud')">🩺 Salud y Fitness</div>
                 <div class="niche-tab" id="tab-motivacion" onclick="switchNiche('motivacion')">🚀 Motivación / Negocios</div>
                 <div class="niche-tab" id="tab-religion" onclick="switchNiche('religion')">✝️ Religión y Fe</div>
             </div>
 
-            <div class="control-panel">
+            <div class="control-panel" id="controlPanel">
                 <div class="custom-select" id="select-container">
                     <select id="categorySelect"></select>
                 </div>
@@ -95,10 +154,58 @@
                 </button>
             </div>
         </header>
+
         <div id="resultados"></div>
     </div>
 
     <script>
+        // ==========================================
+        // LÓGICA DEL CARRUSEL
+        // ==========================================
+        let slideIndex = 0;
+
+        // Guardar si ya lo vio
+        if (localStorage.getItem('onboardingVisto')) {
+            document.getElementById('onboardingOverlay').style.display = 'none';
+        }
+
+        function cambiarSlide(n) {
+            let slides = document.querySelectorAll('.slide');
+            let dots = document.querySelectorAll('.dot');
+            slides[slideIndex].style.display = 'none';
+            dots[slideIndex].classList.remove('active');
+            
+            slideIndex += n;
+
+            if (slideIndex > slides.length - 1) { slideIndex = 0; }
+            if (slideIndex < 0) { slideIndex = slides.length - 1; }
+
+            slides[slideIndex].style.display = 'block';
+            dots[slideIndex].classList.add('active');
+
+            // Ocultar flechas en la última diapositiva
+            document.getElementById('onboardingNav').style.display = slideIndex === slides.length - 1 ? 'none' : 'flex';
+        }
+
+        function irASlide(n) {
+            let slides = document.querySelectorAll('.slide');
+            let dots = document.querySelectorAll('.dot');
+            slides[slideIndex].style.display = 'none';
+            dots[slideIndex].classList.remove('active');
+            slideIndex = n;
+            slides[slideIndex].style.display = 'block';
+            dots[slideIndex].classList.add('active');
+            document.getElementById('onboardingNav').style.display = slideIndex === slides.length - 1 ? 'none' : 'flex';
+        }
+
+        function cerrarOnboarding() {
+            document.getElementById('onboardingOverlay').style.display = 'none';
+            localStorage.setItem('onboardingVisto', 'true');
+        }
+
+        // ==========================================
+        // LÓGICA PRINCIPAL
+        // ==========================================
         let currentNiche = 'dramas';
         let currentLang = 'es';
 
@@ -110,9 +217,23 @@
         };
 
         const translations = {
-            es: { tagline: "Crea • Conecta • Impacta", title: "Minería de Contenido", subtitle: "Elige tu nicho, selecciona la categoría y extrae material viral largo para dividir, hacer clipping y monetizar.", explore: "Explorar", mining: "Rastreando Bóvedas...", loadingGeneric: "La IA está buscando en las plataformas de series...", empty: "No se encontraron tesoros. Intenta otra categoría.", btnText: "Ir a la Fuente", errTitle: "Error", errMsg: "Hubo un problema.", freeLabel: "Gratis:" },
-            en: { tagline: "Create • Connect • Impact", title: "Content Mining", subtitle: "Choose your niche, select the category and extract long viral material to split, clip and monetize.", explore: "Explore", mining: "Scanning Vaults...", loadingGeneric: "AI is searching drama platforms...", empty: "No treasures found. Try another category.", btnText: "Go to Source", errTitle: "Error", errMsg: "There was a problem.", freeLabel: "Free:" }
+            es: { tagline: "Crea • Conecta • Impacta", title: "Minería de Contenido", subtitle: "Elige tu nicho, selecciona la categoría y extrae material viral largo para dividir, hacer clipping y monetizar.", explore: "Explorar", mining: "Rastreando Bóvedas...", loadingGeneric: "La IA está buscando...", empty: "No se encontraron tesoros. Intenta otra categoría.", btnText: "Ir a la Fuente", errTitle: "Error", errMsg: "Hubo un problema.", freeLabel: "Gratis:", backBtn: "🔄 Nueva Búsqueda" },
+            en: { tagline: "Create • Connect • Impact", title: "Content Mining", subtitle: "Choose your niche, select the category and extract long viral material.", explore: "Explore", mining: "Scanning...", loadingGeneric: "AI is searching...", empty: "No treasures found. Try another category.", btnText: "Go to Source", errTitle: "Error", errMsg: "There was a problem.", freeLabel: "Free:", backBtn: "🔄 New Search" }
         };
+
+        // FUNCIÓN PARA RESTAURAR LA PANTALLA
+        function resetearUI() {
+            const t = translations[currentLang];
+            document.getElementById('btn-explorar').style.display = 'block';
+            document.getElementById('select-container').style.display = 'block';
+            document.querySelector('.niche-tabs').style.opacity = '1';
+            document.querySelector('.niche-tabs').style.pointerEvents = 'auto';
+            document.getElementById('btn-text').innerText = t.explore;
+            document.getElementById('btn-explorar').disabled = false;
+            document.getElementById('resultados').classList.remove('show');
+            document.getElementById('resultados').innerHTML = '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         function switchNiche(nicho) {
             currentNiche = nicho;
@@ -197,11 +318,13 @@
 
         function renderTarjetas(series) {
             const contenedor = document.getElementById('resultados');
-            contenedor.innerHTML = '';
             const t = translations[currentLang];
+            
+            // Inyectamos el botón de volver al principio de los resultados
+            contenedor.innerHTML = `<button class="btn-back" onclick="resetearUI()">${t.backBtn}</button>`;
 
             if (series.length === 0) {
-                contenedor.innerHTML = `<p style="text-align:center; color:#666; grid-column: 1/-1;">${t.empty}</p>`;
+                contenedor.innerHTML += `<p style="text-align:center; color:#666; grid-column: 1/-1;">${t.empty}</p>`;
                 return;
             }
 
@@ -244,7 +367,7 @@
                     </div>`;
             });
             gridHTML += '</div>';
-            contenedor.innerHTML = gridHTML;
+            contenedor.innerHTML += gridHTML; // Aquí añadimos las tarjetas DEBAJO del botón de volver
         }
 
         updateCategories();
