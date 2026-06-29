@@ -10,10 +10,10 @@ export default async function handler(req, res) {
     }
 
     const idiomaCompleto = idioma === 'es' ? 'español' : 'english';
-    const tiempo = idioma === 'es' ? 'subido hoy' : 'uploaded today';
+    const tiempo = idioma === 'es' ? 'esta semana' : 'this week';
 
     // ==========================================
-    // NIVEL 1: DRAMAS (Búsqueda rápida de listas)
+    // NIVEL 1: DRAMAS (Sin cambios, funciona bien)
     // ==========================================
     if (nicho === 'dramas') {
         try {
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (El Cazador de Ganchos en Tiempo Real)
+    // NIVEL 2: CLIPPING (Radar Semanal + Estratega Práctico + Red de Seguridad)
     // ==========================================================================================
     let queryTavily = "";
     if (nicho === 'salud') queryTavily = `${categoria} ${tiempo} podcast o video largo ${idiomaCompleto}`;
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     else if (nicho === 'religion') queryTavily = `${categoria} ${tiempo} predica o estudio biblico ${idiomaCompleto}`;
 
     try {
-        // FASE 1: RADAR DE ESTRENOS (Solo cosas de hoy)
+        // FASE 1: RADAR AMPLIADO (De 24 horas a 7 días)
         const tavilyResponse = await fetch("https://api.tavily.com/search", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
                 query: queryTavily, 
                 search_depth: "advanced", 
                 max_results: 10,
-                time_range: "day" // LA CLAVE: Solo trae lo de las últimas 24 horas
+                time_range: "week" // CAMBIO CLAVE: Buscamos en la última semana
             })
         });
 
@@ -65,25 +65,32 @@ export default async function handler(req, res) {
             return res.status(200).json({ series: [] });
         }
 
+        // Si algo falla con Groq, usaremos esto como respaldo
+        const respaldoSeguro = tavilyData.results.map(item => ({
+            nombre: item.title,
+            gancho: idioma === 'es' ? "Materia prima encontrada. Revisa el enlace para buscar el minuto exacto a recortar." : "Raw material found. Check the link to find the exact minute to clip.",
+            estado: "⚠️ Sin análisis",
+            viralidad: "N/A",
+            url: item.url
+        }));
+
         const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // FASE 2: EL OJEADOR (Groq buscando el Gancho perfecto para TikTok)
+        // FASE 2: EL ESTRATEGA (Menos estricto, más práctico)
         const promptGroq = idioma === 'es' 
-        ? `Eres un "Cazador de Ganchos" experto para TikTok/Reels. Tu misión es encontrar material de video largo (más de 15 minutos) que se haya subido en las últimas 24 horas y que tenga potencial para hacer CLIPPING.
-        Reglas estrictas:
-        1. DESCARTA cualquier resultado que sea un artículo corto o no tenga video.
-        2. DESCARTA cualquier resultado que no tenga un "gancho" claro (una polémica, una revelación, un error famoso, un dato impactante).
-        3. Si no hay nada que valga la pena, devuelve un array vacío [].
+        ? `Eres un estratega de contenido para TikTok/Reels. Te voy a dar resultados de búsqueda de videos/podcasts de la última semana sobre "${categoria}".
+        Tu trabajo es encontrar el potencial de clipping. 
+        1. Si encuentras un "gancho" claro (polémica, revelación, dato fuerte), escríbelo.
+        2. Si es un video informativo normal pero útil, dame una idea de qué parte resumir (ej. "Resumir los 3 primeros minutos").
         Devuelve ÚNICAMENTE un JSON array con máximo 5 resultados. Formato:
-        {"nombre": "Título", "gancho": "Explica en 2 líneas QUÉ momento exacto clippear y por qué explotará (Ej: Minuto 4:20 revela...)", "estado": "🔥 Acaba de subir", "viralidad": "Alta/Media", "url": "enlace"}
+        {"nombre": "Título", "gancho": "Qué clippear y por qué", "estado": "🔥 Reciente", "viralidad": "Alta/Media", "url": "enlace"}
         Datos: ${materiaPrima}`
-        : `You are an expert "Hook Hunter" for TikTok/Reels. Your mission is to find long-form video material (15+ mins) uploaded in the last 24 hours with high CLIPPING potential.
-        Strict rules:
-        1. DISCARD any short articles or non-video content.
-        2. DISCARD anything without a clear "hook" (controversy, reveal, mistake, shocking fact).
-        3. If nothing is good enough, return an empty array [].
+        : `You are a content strategist for TikTok/Reels. I will give you search results for videos/podcasts from the past week about "${categoria}".
+        Your job is to find clipping potential.
+        1. If you find a clear "hook" (controversy, reveal, strong fact), write it.
+        2. If it's a normal but useful video, give me an idea of what part to summarize (eg "Summarize the first 3 minutes").
         Return ONLY a JSON array with max 5 results. Format:
-        {"nombre": "Title", "gancho": "Explain in 2 lines WHAT exact moment to clip and why it will go viral (Eg: Minute 4:20 reveals...)", "estado": "🔥 Just uploaded", "viralidad": "High/Medium", "url": "link"}
+        {"nombre": "Title", "gancho": "What to clip and why", "estado": "🔥 Recent", "viralidad": "High/Medium", "url": "link"}
         Data: ${materiaPrima}`;
 
         const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -95,26 +102,38 @@ export default async function handler(req, res) {
             body: JSON.stringify({
                 model: "llama-3.1-8b-instant",
                 messages: [{ role: "user", content: promptGroq }],
-                temperature: 0.4
+                temperature: 0.5
             })
         });
 
         const groqData = await groqResponse.json();
-        const textoRespuesta = groqData.choices[0]?.message?.content || "[]";
         
+        // RED DE SEGURIDAD: Si Groq se confunde o falla, usamos el respaldo
+        if (!groqData.choices || !groqData.choices[0] || !groqData.choices[0].message) {
+            console.error("Groq falló, usando red de seguridad");
+            return res.status(200).json({ series: respaldoSeguro });
+        }
+
+        const textoRespuesta = groqData.choices[0].message.content || "[]";        
         const jsonLimpio = textoRespuesta.replace(/```json/g, '').replace(/```/g, '').trim();
         
         let seriesAnalizadas;
         try {
             seriesAnalizadas = JSON.parse(jsonLimpio);
+            // Si por alguna razón Groq devolvió un objeto en vez de un array
+            if (!Array.isArray(seriesAnalizadas)) {
+                return res.status(200).json({ series: respaldoSeguro });
+            }
         } catch (parseError) {
-            return res.status(200).json({ series: [] }); // Si la IA se confunde, mejor mostrar vacío que error
+            // Si el JSON de Groq está roto, usamos el respaldo
+            console.error("JSON roto de Groq, usando red de seguridad");
+            return res.status(200).json({ series: respaldoSeguro });
         }
 
         return res.status(200).json({ series: seriesAnalizadas });
 
     } catch (error) {
-        console.error("Error en clipping:", error);
+        console.error("Error general en clipping:", error);
         return res.status(500).json({ error: "Error analizando contenido: " + error.message });
     }
 }
