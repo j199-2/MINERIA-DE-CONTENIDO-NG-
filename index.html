@@ -112,7 +112,7 @@
             },
             religion: {
                 es: ["📖 Estudios Bíblicos / Reflexiones","🙏 Mensajes de Fe / Predicas", "🕊️ Frases y Versículos", "⛪ Testimonios de Vida", "🤲 Oraciones y Motivación Cristiana"],
-                en: ["📖 Biblical Studies / Reflections", "🙏 Faith Messages / Sermons", "🕊️ Quotes and Verses", "⛪ Life Testimonials", "🤲 Prayers and Christian Motivation"]
+                en: ["📖 Biblical Studies / Reflections", "🙏 Faith Messages / Sermons", "🕊️ Quotes and Versicles", "⛪ Life Testimonials", "🤲 Prayers and Christian Motivation"]
             }
         };
 
@@ -199,8 +199,14 @@
                 });
 
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || "Error desconocido del servidor");
+                    let errorMessage = "Error desconocido del servidor";
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                    } catch (e) {
+                        errorMessage = await response.text();
+                    }
+                    throw new Error(errorMessage);
                 }
 
                 const data = await response.json();
@@ -210,7 +216,7 @@
                 document.getElementById('resultados').innerHTML = `
                     <div style="text-align: center; margin-top: 50px;">
                         <p style="color: var(--brand-purple); font-size: 1.5rem; font-family: 'Orbitron';">${t.errTitle}</p>
-                        <p style="color: #ff4d4d; margin-top:20px; font-size: 1.1rem; background: rgba(255,0,0,0.1); padding: 15px; border-radius: 10px; border: 1px solid #ff4d4d;">${error.message}</p>
+                        <p style="color: #ff4d4d; margin-top:20px; font-size: 1.1rem; background: rgba(255,0,0,0.1); padding: 15px; border-radius: 10px; border: 1px solid #ff4d4d; word-break: break-word;">${error.message}</p>
                     </div>`;
             }
         }
@@ -256,7 +262,6 @@
             contenedor.innerHTML = gridHTML;
         }
 
-        // Iniciar
         updateCategories();
     </script>
 </body>
