@@ -9,13 +9,12 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: "Error: Faltan las claves en Vercel." });
     }
 
-    const idiomaCompleto = idioma === 'es' ? 'español' : 'english';
-
     // ==========================================
-    // NIVEL 1: DRAMAS (Búsqueda rápida sin IA)
+    // NIVEL 1: DRAMAS (Aparte, sin fusionar)
     // ==========================================
     if (nicho === 'dramas') {
         try {
+            const idiomaCompleto = idioma === 'es' ? 'español' : 'english';
             const query = `mini series cortas "${categoria}" ${idiomaCompleto} lista de reproducción youtube`;
             const response = await fetch("https://api.tavily.com/search", {
                 method: "POST",
@@ -32,51 +31,102 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (Tavily extrae + OpenRouter analiza)
+    // NIVEL 2: CLIPPING (EL CEREBRO ÚNICO - Búsqueda de Fusión Múltiple)
     // ==========================================================================================
     
-    let queryTavily = `${categoria} video largo o podcast reciente ${idiomaCompleto}`;
+    // Configuramos los 3 Láseres según el idioma
+    const es = idioma === 'es';
+    let queries = [];
+
+    if (nicho === 'salud') {
+        queries = es ? [
+            `"${categoria}" rutina ejercicio completo site:youtube.com`,
+            `entrevista doctor explicando "${categoria}" site:youtube.com`,
+            `podcast salud bienestar "${categoria}"`
+        ] : [
+            `"${categoria}" full workout routine site:youtube.com`,
+            `doctor interview explaining "${categoria}" site:youtube.com`,
+            `health wellness podcast "${categoria}"`
+        ];
+    } else if (nicho === 'motivacion') {
+        queries = es ? [
+            `"${categoria}" conferencia motivacional completa site:youtube.com`,
+            `entrevista emprendedor exitoso "${categoria}" site:youtube.com`,
+            `podcast negocios desarrollo personal "${categoria}"`
+        ] : [
+            `"${categoria}" full motivational speech site:youtube.com`,
+            `successful entrepreneur interview "${categoria}" site:youtube.com`,
+            `business personal development podcast "${categoria}"`
+        ];
+    } else if (nicho === 'religion') {
+        queries = es ? [
+            `"${categoria}" predica cristiana completa site:youtube.com`,
+            `estudio biblico profundo sobre "${categoria}" site:youtube.com`,
+            `podcast fe cristiana testimonio "${categoria}"`
+        ] : [
+            `"${categoria}" full christian sermon site:youtube.com`,
+            `deep biblical study about "${categoria}" site:youtube.com`,
+            `christian faith podcast testimony "${categoria}"`
+        ];
+    }
 
     try {
-        // 1. EL MINERO: Tavily busca en internet
-        const tavilyResponse = await fetch("https://api.tavily.com/search", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
-            body: JSON.stringify({ 
-                query: queryTavily, 
-                search_depth: "advanced", 
-                max_results: 15,
-                time_range: "week",
-                // BLOQUEO ESTRICTO DE BASURA
-                exclude_domains: ["instagram.com", "facebook.com", "tiktok.com", "twitter.com", "x.com"]
-            })
+        // DISPARAMOS LOS 3 LÁSERES AL MISMO TIEMPO (Paralelo)
+        const promesasBusqueda = queries.map(query => 
+            fetch("https://api.tavily.com/search", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${tavilyKey}` },
+                body: JSON.stringify({ 
+                    query, 
+                    search_depth: "basic", // Usamos basic para que sea ultra rápido
+                    max_results: 7, // Traemos 7 x 3 = 21 resultados brutos
+                    time_range: "month", // Ampliamos a un mes para encontrar más material
+                    exclude_domains: ["instagram.com", "facebook.com", "tiktok.com", "twitter.com", "x.com"]
+                })
+            }).then(res => res.json())
+        );
+
+        // Esperamos a que los 3 láseres terminen
+        const resultadosFusionados = await Promise.all(promesasBusqueda);
+
+        // Juntamos toda la materia prima y eliminamos URLs duplicadas
+        let materiaBruta = [];
+        const urlsVistas = new Set();
+        
+        resultadosFusionados.forEach(data => {
+            if (data && data.results) {
+                data.results.forEach(item => {
+                    if (!urlsVistas.has(item.url)) {
+                        urlsVistas.add(item.url);
+                        materiaBruta.push(item);
+                    }
+                });
+            }
         });
 
-        const tavilyData = await tavilyResponse.json();
-        if (!tavilyData.results || tavilyData.results.length === 0) return res.status(200).json({ series: [] });
+        if (materiaBruta.length === 0) return res.status(200).json({ series: [] });
 
-        // Respaldo de emergencia por si la IA falla
-        const respaldoSeguro = tavilyData.results.slice(0, 5).map(item => ({
-            nombre: item.title, tipo_contenido: "Contenido Encontrado", descripcion: "Materia prima.", potencial_viralidad: "Requiere análisis", gancho: "Revisa el enlace.", url: item.url
-        }));
+        // Formateamos para que la IA lo lea fácil
+        const textoParaIA = materiaBruta.map((item, i) => `Item ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // Preparamos la materia prima para el Joyero
-        const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
-
-        // 2. EL JEWELO: OpenRouter analiza y filtra
-        const promptIA = idioma === 'es' 
-        ? `Eres un Curador Experto para creadores de TikTok/Reels. Encuentra las 3 a 5 piezas MÁS VALIOSAS sobre "${categoria}" para hacer clipping.
-        INSTRUCCIONES ESTRICTAS:
-        1. FORMATO: Si es video/podcast largo: "Video Largo" o "Podcast/Audio". Si es un ARTÍCULO excelente para video Faceless: "Artículo/Noticia".
-        2. RELEVANCIA: Ignora lo que no tenga absolutamente nada que ver con "${categoria}".
-        Devuelve ÚNICAMENTE un JSON estructurado así: {"resultados": [{"nombre": "Título", "tipo_contenido": "Video Largo", "descripcion": "De qué va...", "potencial_viralidad": "Por qué...", "gancho": "Qué hacer...", "url": "enlace"}]}
-        Datos: ${materiaPrima}`
-        : `You are an Expert Curator for TikTok/Reels creators. Find the 3 to 5 MOST VALUABLE pieces about "${categoria}" for clipping.
-        STRICT INSTRUCTIONS:
-        1. FORMAT: If long video/podcast: "Long Video" or "Podcast/Audio". If an excellent article for Faceless video: "Article/News".
-        2. RELEVANCE: Ignore anything that has nothing to do with "${categoria}".
-        Return ONLY a structured JSON like this: {"resultados": [{"nombre": "Title", "tipo_contenido": "Long Video", "descripcion": "About...", "potencial_viralidad": "Why...", "gancho": "What to do...", "url": "link"}]}
-        Data: ${materiaPrima}`;
+        // EL JEWELO (OpenRouter) analiza la fusión
+        const promptIA = es 
+        ? `Eres un experto en encontrar material para hacer Clipping (recortes virales). 
+        Te voy a dar una lista fusionada de videos y podcasts sobre "${categoria}".
+        Tu MISIÓN es encontrar los 5 mejores para hacer clips de TikTok/Reels.
+        REGLAS:
+        1. FORMATO: Solo "Video Largo" o "Podcast/Audio".
+        2. RELEVANCIA: Estrictamente sobre "${categoria}".
+        Devuelve ÚNICAMENTE este JSON: {"resultados": [{"nombre": "Título", "tipo_contenido": "Video Largo", "descripcion": "De qué va...", "potencial_viralidad": "Por qué...", "gancho": "Qué hacer...", "url": "enlace"}]}
+        Datos: ${textoParaIA}`
+        : `You are an expert at finding material for Clipping (viral shorts). 
+        I will give you a fused list of videos and podcasts about "${categoria}".
+        Your MISSION is to find the top 5 for TikTok/Reels clips.
+        RULES:
+        1. FORMAT: Only "Long Video" or "Podcast/Audio".
+        2. RELEVANCE: Strictly about "${categoria}".
+        Return ONLY this JSON: {"resultados": [{"nombre": "Title", "tipo_contenido": "Long Video", "descripcion": "About...", "potencial_viralidad": "Why...", "gancho": "What to do...", "url": "link"}]}
+        Data: ${textoParaIA}`;
 
         const openRouterResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
@@ -87,43 +137,37 @@ export default async function handler(req, res) {
                 "X-Title": "NextGen Creators"
             },
             body: JSON.stringify({
-                // ⚠️ EL INTERRUPTOR DE NEGOCIO ⚠️
-                // Modo Gratis actual: "meta-llama/llama-3.1-8b-instruct:free"
-                // Modo PRO del futuro: "meta-llama/llama-3.1-70b-instruct" (Borra el :free cuando quieras escalar)
                 model: "meta-llama/llama-3.1-8b-instruct:free", 
                 messages: [{ role: "user", content: promptIA }],
                 temperature: 0.3,
-                // Forzamos que la respuesta sea un JSON válido para evitar errores
                 response_format: { type: "json_object" } 
             })
         });
 
         const orData = await openRouterResponse.json();
         
-        // Si OpenRouter falla, lanzamos el respaldo
         if (!orData.choices || !orData.choices[0] || !orData.choices[0].message) {
-            console.error("Error de OpenRouter:", JSON.stringify(orData));
-            return res.status(200).json({ series: respaldoSeguro });
+            // Si la IA falla, mostramos los primeros 5 crudos como respaldo
+            const respaldo = materiaBruta.slice(0, 5).map(i => ({ nombre: i.title, tipo_contenido: "Video Largo", descripcion: "Materia prima", potencial_viralidad: "Alta", gancho: "Revisa el enlace", url: i.url }));
+            return res.status(200).json({ series: respaldo });
         }
 
         const textoRespuesta = orData.choices[0].message.content || "{}";
         
-        let seriesAnalizadas;
         try {
             const parseado = JSON.parse(textoRespuesta);
-            seriesAnalizadas = parseado.resultados || [];
+            const seriesFinales = parseado.resultados || [];
             
-            // Si la IA no encontró nada útil, lanzamos el respaldo
-            if (!Array.isArray(seriesAnalizadas) || seriesAnalizadas.length === 0) {
-                return res.status(200).json({ series: respaldoSeguro });
+            if (!Array.isArray(seriesFinales) || seriesFinales.length === 0) {
+                const respaldo = materiaBruta.slice(0, 5).map(i => ({ nombre: i.title, tipo_contenido: "Video Largo", descripcion: "Materia prima", potencial_viralidad: "Alta", gancho: "Revisa el enlace", url: i.url }));
+                return res.status(200).json({ series: respaldo });
             }
-        } catch (parseError) {
-            // Si el JSON tiene un error de formato, lanzamos el respaldo
-            return res.status(200).json({ series: respaldoSeguro });
-        }
 
-        // ¡ÉXITO! Devolvemos el oro puro analizado por la IA
-        return res.status(200).json({ series: seriesAnalizadas });
+            return res.status(200).json({ series: seriesFinales });
+        } catch (parseError) {
+            const respaldo = materiaBruta.slice(0, 5).map(i => ({ nombre: i.title, tipo_contenido: "Video Largo", descripcion: "Materia prima", potencial_viralidad: "Alta", gancho: "Revisa el enlace", url: i.url }));
+            return res.status(200).json({ series: respaldo });
+        }
 
     } catch (error) {
         console.error("Error general:", error);
