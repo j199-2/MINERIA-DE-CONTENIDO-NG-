@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const tiempo = idioma === 'es' ? 'esta semana' : 'this week';
 
     // ==========================================
-    // NIVEL 1: DRAMAS (Sin cambios)
+    // NIVEL 1: DRAMAS (Mantiene su propio radar rápido)
     // ==========================================
     if (nicho === 'dramas') {
         try {
@@ -27,11 +27,7 @@ export default async function handler(req, res) {
             if (!data.results) return res.status(200).json({ series: [] });
             
             const series = data.results.map(item => ({ 
-                nombre: item.title, 
-                genero: categoria, 
-                capitulos: "5+", 
-                viralidad: "Alta", 
-                url: item.url 
+                nombre: item.title, genero: categoria, capitulos: "5+", viralidad: "Alta", url: item.url 
             }));
             return res.status(200).json({ series });
         } catch (error) {
@@ -40,13 +36,18 @@ export default async function handler(req, res) {
     }
 
     // ==========================================================================================
-    // NIVEL 2: CLIPPING (Ley Estricta Anti-Instagram)
+    // NIVEL 2: CLIPPING (EL RADAR DE FRANCOTIRADOR - Busca solo en las Bóvedas)
     // ==========================================================================================
     let queryTavily = "";
-    // LEY ESTRICTA: Se agregó "-instagram" a todas las búsquedas para bloquear esa red
-    if (nicho === 'salud') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR noticia) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
-    else if (nicho === 'motivacion') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR noticia) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
-    else if (nicho === 'religion') queryTavily = `${categoria} ${tiempo} (youtube OR podcast OR blog OR sermon) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
+    
+    // LEY ESTRICTA: Usamos el comando "site:" para obligar al buscador a mirar DENTRO de estas plataformas exclusivas
+    if (nicho === 'salud') {
+        queryTavily = `"${categoria}" ${tiempo} (site:open.spotify.com OR site:rumble.com OR site:substack.com OR site:ted.com OR site:vimeo.com) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
+    } else if (nicho === 'motivacion') {
+        queryTavily = `"${categoria}" ${tiempo} (site:linkedin.com OR site:open.spotify.com OR site:rumble.com OR site:tedx.com OR site:audible.com) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
+    } else if (nicho === 'religion') {
+        queryTavily = `"${categoria}" ${tiempo} (site:vimeo.com OR site:sermonaudio.com OR site:open.spotify.com OR site:audible.com OR site:rumble.com) ${idiomaCompleto} -tiktok -reels -shorts -instagram`;
+    }
 
     try {
         const tavilyResponse = await fetch("https://api.tavily.com/search", {
@@ -65,40 +66,43 @@ export default async function handler(req, res) {
             return res.status(200).json({ series: [] });
         }
 
-        // Red de seguridad por si Groq falla
+        // Red de seguridad por si la IA se confunde
         const respaldoSeguro = tavilyData.results.map(item => ({
             nombre: item.title,
-            tipo_contenido: "Desconocido",
-            descripcion: "Materia prima encontrada. Revisa el enlace.",
-            potencial_viralidad: "Por verificar",
-            gancho: "Revisa el contenido para encontrar el ángulo.",
-            estado: "⚠️ Sin análisis",
+            tipo_contenido: "Contenido Premium",
+            descripcion: "Materia prima de alta calidad encontrada. Revisa el enlace.",
+            potencial_viralidad: "Alto (Fuente verificada)",
+            gancho: "Revisa el contenido para encontrar el ángulo de clipping.",
             url: item.url
         }));
 
         const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // PROMPT: Se añadió Instagram a la lista negra de la IA
+        // CEREBRO ESTRATEGA: Ahora sabe de dónde viene el contenido y cómo analizarlo
         const promptGroq = idioma === 'es' 
-        ? `Eres un Estratega de Contenido Experto. Analiza estos resultados de la última semana sobre "${categoria}".
+        ? `Eres un Estratega de Clipping Experto. Estamos extrayendo contenido de plataformas premium (Spotify, Rumble, Substack, TED, Vimeo, Audible, LinkedIn).
         REGLAS ESTRICTAS:
-        1. IDENTIFICA EL FORMATO: Debes decir si es "Video Largo/Podcast" o "Artículo/Noticia".
-        2. LEY ESTRICTA: DESCARTA cualquier cosa que sea de TikTok, Reels, Shorts, Instagram o menores a 15 minutos.
-        3. DESCRIPCIÓN: Explica claramente de qué trata el contenido (2 líneas).
-        4. POTENCIAL VIRAL: Explica por qué la gente haría clic o compartiría esto (1 línea).
-        5. GANCHO: Si es video, di qué minuto clippear. Si es artículo, di cómo convertirlo en video.
+        1. FORMATO: Identifica si es "Podcast/Audio" (Spotify/Audible), "Artículo/Análisis" (Substack/LinkedIn) o "Video Conferencia/Documental" (Rumble/TED/Vimeo).
+        2. DESCARTA cualquier resultado corto o basura.
+        3. ANÁLISIS ESPECÍFICO:
+           - Si es Podcast/Audio: Di qué minuto tiene el "Gancho Hablado" explosivo.
+           - Si es Artículo: Di cómo convertir ese texto en un video "Faceless" (sin cara) de alta retención.
+           - Si es Video: Di qué fragmento recortar.
+        4. POTENCIAL VIRAL: Explica por qué este material de fuente premium aplastará a la competencia.
         Devuelve ÚNICAMENTE un JSON array con máximo 5 resultados EXACTAMENTE con esta estructura:
-        {"nombre": "Título", "tipo_contenido": "Video Largo" o "Artículo/Noticia", "descripcion": "De qué va...", "potencial_viralidad": "Por qué explotará...", "gancho": "Qué hacer...", "url": "enlace"}
+        {"nombre": "Título", "tipo_contenido": "Ej: Podcast/Audio", "descripcion": "De qué va...", "potencial_viralidad": "Por qué ganará...", "gancho": "Estrategia de clipping...", "url": "enlace"}
         Datos: ${materiaPrima}`
-        : `You are an Expert Content Strategist. Analyze these results from the past week about "${categoria}".
+        : `You are an Expert Clipping Strategist. We are extracting content from premium platforms (Spotify, Rumble, Substack, TED, Vimeo, Audible, LinkedIn).
         STRICT RULES:
-        1. IDENTIFY FORMAT: You must say if it is "Long Video/Podcast" or "Article/News".
-        2. STRICT LAW: DISCARD anything from TikTok, Reels, Shorts, Instagram, or under 15 mins.
-        3. DESCRIPTION: Explain clearly what the content is about (2 lines).
-        4. VIRAL POTENTIAL: Explain why people would click or share this (1 line).
-        5. HOOK: If it's a video, say what minute to clip. If it's an article, say how to turn it into a video.
+        1. FORMAT: Identify if it's "Podcast/Audio", "Article/Analysis", or "Video Talk/Doc".
+        2. DISCARD any short or trash results.
+        3. SPECIFIC ANALYSIS:
+           - If Podcast/Audio: What exact minute has the explosive "Spoken Hook"?
+           - If Article: How to turn this text into a high-retention "Faceless" video?
+           - If Video: What exact fragment to clip?
+        4. VIRAL POTENTIAL: Explain why this premium material will crush the competition.
         Return ONLY a JSON array with max 5 results EXACTLY with this structure:
-        {"nombre": "Title", "tipo_contenido": "Long Video" or "Article/News", "descripcion": "What it's about...", "potencial_viralidad": "Why it will go viral...", "gancho": "What to do...", "url": "link"}
+        {"nombre": "Title", "tipo_contenido": "Eg: Podcast/Audio", "descripcion": "What it's about...", "potencial_viralidad": "Why it will win...", "gancho": "Clipping strategy...", "url": "link"}
         Data: ${materiaPrima}`;
 
         const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
