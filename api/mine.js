@@ -70,7 +70,7 @@ export default async function handler(req, res) {
 
         const materiaPrima = tavilyData.results.map((item, i) => `Resultado ${i+1}:\nTitulo: ${item.title}\nContenido: ${item.content}\nURL: ${item.url}`).join("\n\n");
 
-        // 2. GEMINI (Usando el alias 'latest' para que nunca falle la ruta)
+        // 2. GEMINI (Cambiado a v1 para compatibilidad total con claves nuevas)
         const promptGemini = idioma === 'es' 
         ? `Eres un Curador de Contenido Experto para creadores de TikTok/Reels. Te voy a dar resultados sobre "${categoria}".
         Encuentra las 3 a 5 piezas MÁS VALIOSAS para clipping.
@@ -97,8 +97,8 @@ export default async function handler(req, res) {
         {"nombre": "Title", "tipo_contenido": "Long Video" or "Podcast/Audio" or "Article/News", "descripcion": "What it's about...", "potencial_viralidad": "Why...", "gancho": "What to do...", "url": "link"}
         Data: ${materiaPrima}`;
 
-        // EL CAMBIO ESTÁ AQUÍ: gemini-1.5-flash-latest
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiKey}`;
+        // EL CAMBIO ESTÁ AQUÍ: Cambiamos v1beta por v1, y usamos el modelo estándar gemini-1.5-flash
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
         
         const geminiResponse = await fetch(geminiUrl, {
             method: "POST",
