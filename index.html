@@ -36,11 +36,8 @@
         .btn-explore { background: var(--brand-gradient); border: none; color: white; padding: 20px; font-family: 'Orbitron', sans-serif; font-size: 1.4rem; font-weight: 900; border-radius: 15px; cursor: pointer; text-transform: uppercase; letter-spacing: 3px; box-shadow: 0 0 40px rgba(41, 121, 255, 0.4); transition: all 0.3s ease; }
         .btn-explore:hover { transform: translateY(-3px); box-shadow: 0 10px 50px rgba(156, 39, 176, 0.5); filter: brightness(1.1); }
         .btn-explore:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        
-        /* BOTÓN VOLVER */
         .btn-back { background: transparent; border: 2px solid var(--text-muted); color: var(--text-muted); padding: 15px 30px; font-family: 'Orbitron', sans-serif; font-size: 1rem; font-weight: 700; border-radius: 15px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; margin: 0 auto 40px auto; display: block; text-align: center; width: fit-content; }
         .btn-back:hover { border-color: var(--brand-blue); color: var(--brand-blue); transform: translateY(-2px); }
-
         #resultados { margin-top: 50px; display: none; opacity: 0; transition: opacity 0.5s ease; }
         #resultados.show { display: block; opacity: 1; }
         .grid-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 25px; }
@@ -65,9 +62,8 @@
         .btn-mina { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 25px; padding: 16px; text-align: center; background: var(--brand-gradient); color: white; text-decoration: none; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 0.95rem; border-radius: 10px; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(41, 121, 255, 0.3); }
         .btn-mina:hover { transform: scale(1.02); box-shadow: 0 8px 30px rgba(156, 39, 176, 0.5); }
         #loading { text-align: center; font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--brand-blue); margin-top: 60px; animation: pulse 1.5s infinite; }
+        .mobile-tip { color: #888; font-size: 0.8rem; margin-top: 10px; line-height: 1.4; border: 1px dashed rgba(255,255,255,0.15); padding: 10px; border-radius: 8px; background: rgba(255, 255, 255, 0.02); }
         @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity:0.4; } }
-
-        /* CARRUSEL ONBOARDING */
         .onboarding-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 5, 9, 0.95); z-index: 1000; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(10px); }
         .onboarding-container { width: 90%; max-width: 500px; background: linear-gradient(160deg, rgba(30, 30, 50, 0.9), rgba(10, 10, 20, 0.9)); border: 1px solid var(--glass-border); border-radius: 20px; padding: 40px; text-align: center; position: relative; box-shadow: 0 0 60px rgba(41, 121, 255, 0.2); }
         .onboarding-icon { font-size: 4rem; margin-bottom: 20px; }
@@ -81,12 +77,10 @@
         .dot.active { background: var(--brand-blue); transform: scale(1.2); }
         .btn-start { background: var(--brand-gradient); border: none; color: white; padding: 15px 40px; font-family: 'Orbitron', sans-serif; font-size: 1.2rem; font-weight: 900; border-radius: 50px; cursor: pointer; margin-top: 20px; text-transform: uppercase; box-shadow: 0 0 30px rgba(41, 121, 255, 0.5); }
         .btn-start:hover { transform: scale(1.05); }
-
         @media (max-width: 600px) { .brand-next { font-size: 3rem; } .brand-gen { font-size: 1.8rem; letter-spacing: 8px; margin-left: 8px; } .tool-title { font-size: 1.8rem; } .niche-tabs { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-    <!-- CARRUSEL DE INICIO -->
     <div class="onboarding-overlay" id="onboardingOverlay">
         <div class="onboarding-container">
             <div id="slide-0" class="slide">
@@ -102,7 +96,7 @@
             <div id="slide-2" class="slide" style="display: none;">
                 <div class="onboarding-icon">📺🎁</div>
                 <h2 class="onboarding-title">MODO SERIES</h2>
-                <p class="onboarding-text">Busca en más de 30 plataformas de Mini Series (ShortMax, ReelShort, etc.). Te diremos de qué trata la serie y cuántos capítulos te regalan gratis para que los monetices.</p>
+                <p class="onboarding-text">Busca en más de 30 plataformas de Mini Series. Te diremos de qué trata la serie y cuántos capítulos te regalan gratis para que los monetices.</p>
             </div>
             <div id="slide-3" class="slide" style="display: none;">
                 <div class="onboarding-icon">🚀</div>
@@ -110,7 +104,6 @@
                 <p class="onboarding-text">Elige tu nicho, dale a explorar y domina las tendencias. ¡Empieza a minar ahora mismo!</p>
                 <button class="btn-start" onclick="cerrarOnboarding()">Comenzar</button>
             </div>
-
             <div class="onboarding-nav" id="onboardingNav">
                 <button class="arrow-btn" onclick="cambiarSlide(-1)">❮</button>
                 <div class="dots">
@@ -159,12 +152,7 @@
     </div>
 
     <script>
-        // ==========================================
-        // LÓGICA DEL CARRUSEL
-        // ==========================================
         let slideIndex = 0;
-
-        // Guardar si ya lo vio
         if (localStorage.getItem('onboardingVisto')) {
             document.getElementById('onboardingOverlay').style.display = 'none';
         }
@@ -174,16 +162,11 @@
             let dots = document.querySelectorAll('.dot');
             slides[slideIndex].style.display = 'none';
             dots[slideIndex].classList.remove('active');
-            
             slideIndex += n;
-
             if (slideIndex > slides.length - 1) { slideIndex = 0; }
             if (slideIndex < 0) { slideIndex = slides.length - 1; }
-
             slides[slideIndex].style.display = 'block';
             dots[slideIndex].classList.add('active');
-
-            // Ocultar flechas en la última diapositiva
             document.getElementById('onboardingNav').style.display = slideIndex === slides.length - 1 ? 'none' : 'flex';
         }
 
@@ -203,9 +186,6 @@
             localStorage.setItem('onboardingVisto', 'true');
         }
 
-        // ==========================================
-        // LÓGICA PRINCIPAL
-        // ==========================================
         let currentNiche = 'dramas';
         let currentLang = 'es';
 
@@ -221,7 +201,6 @@
             en: { tagline: "Create • Connect • Impact", title: "Content Mining", subtitle: "Choose your niche, select the category and extract long viral material.", explore: "Explore", mining: "Scanning...", loadingGeneric: "AI is searching...", empty: "No treasures found. Try another category.", btnText: "Go to Source", errTitle: "Error", errMsg: "There was a problem.", freeLabel: "Free:", backBtn: "🔄 New Search" }
         };
 
-        // FUNCIÓN PARA RESTAURAR LA PANTALLA
         function resetearUI() {
             const t = translations[currentLang];
             document.getElementById('btn-explorar').style.display = 'block';
@@ -320,7 +299,6 @@
             const contenedor = document.getElementById('resultados');
             const t = translations[currentLang];
             
-            // Inyectamos el botón de volver al principio de los resultados
             contenedor.innerHTML = `<button class="btn-back" onclick="resetearUI()">${t.backBtn}</button>`;
 
             if (series.length === 0) {
@@ -339,6 +317,7 @@
                     metaHTML = `
                         <p class="card-desc">${serie.descripcion || ''}</p>
                         <div class="card-meta"><span>🎁 ${t.freeLabel} <span class="stat-caps">${serie.capitulos || 'N/A'}</span></span></div>
+                        <p class="mobile-tip">📱 <strong>Pro Tip:</strong> Entra desde tu celular. Usa la grabadora de pantalla nativa para copiar los capítulos sin bloqueos de la app.</p>
                     `;
                 } else if (clippingNichos.includes(currentNiche)) {
                     
@@ -367,7 +346,7 @@
                     </div>`;
             });
             gridHTML += '</div>';
-            contenedor.innerHTML += gridHTML; // Aquí añadimos las tarjetas DEBAJO del botón de volver
+            contenedor.innerHTML += gridHTML;
         }
 
         updateCategories();
