@@ -47,12 +47,13 @@
         .card:hover { transform: translateY(-8px); border-color: rgba(255, 255, 255, 0.15); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); }
         .card:hover::before { opacity: 1; }
         .card-title { font-family: 'Orbitron', sans-serif; font-size: 1.1rem; margin-bottom: 15px; color: #fff; letter-spacing: 0.5px; line-height: 1.4; }
-        .type-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-bottom: 15px; }
-        .badge-video { background: rgba(41, 121, 255, 0.2); color: var(--brand-blue); border: 1px solid var(--brand-blue); }
-        .badge-articulo { background: rgba(255, 214, 0, 0.2); color: var(--moto-gold); border: 1px solid var(--moto-gold); }
         .card-desc { color: #ccc; font-size: 0.9rem; margin-bottom: 12px; line-height: 1.6; }
         .card-viral { color: var(--health-green); font-size: 0.85rem; margin-bottom: 12px; font-style: italic; }
         .card-hook { color: #00E5FF; font-size: 0.9rem; margin-bottom: 20px; line-height: 1.6; font-weight: 600; background: rgba(0, 229, 255, 0.05); padding: 15px; border-radius: 8px; border-left: 3px solid #00E5FF; }
+        .type-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; margin-bottom: 15px; }
+        .badge-video { background: rgba(41, 121, 255, 0.2); color: var(--brand-blue); border: 1px solid var(--brand-blue); }
+        .badge-articulo { background: rgba(255, 214, 0, 0.2); color: var(--moto-gold); border: 1px solid var(--moto-gold); }
+        .badge-audio { background: rgba(0, 230, 118, 0.2); color: var(--health-green); border: 1px solid var(--health-green); }
         .card-meta { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 1rem; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; }
         .stat-viral { color: #00E5FF; font-weight: 700; }
         .stat-caps { color: var(--brand-purple); font-weight: 700; }
@@ -102,41 +103,15 @@
         let currentLang = 'es';
 
         const categoriesDB = {
-            dramas: {
-                es: ["💔 Romance CEO / Rico y Pobre", "🔥 Venganza / Reencarnación", "🔫 Mafia / Crimen Organizado", "✨ Fantasía / Sistema Mágico", "😂 Comedia / Vida Cotidiana"],
-                en: ["💔 CEO Romance / Rich & Poor", "🔥 Revenge / Reincarnation", "🔫 Mafia / Organized Crime", "✨ Fantasy / Magic System", "😂 Comedy / Daily Life"]
-            },
-            salud: {
-                es: ["🥗 Dietas Virales / Pérdida de peso", "🔬 Nuevos Estudios Científicos", "🏋️ Rutinas de Ejercicios Efectivas", "💊 Alimentación y Suplementación", "🏥 Noticias de Salud y Bienestar"],
-                en: ["🥗 Viral Diets / Weight Loss", "🔬 New Scientific Studies", "🏋️ Effective Workout Routines", "💊 Nutrition and Supplements", "🏥 Health and Wellness News"]
-            },
-            motivacion: {
-                es: ["🧠 Desarrollo Personal / Hábitos", "💰 Emprendimiento / Negocios", "🗣️ Discursos Motivacionales", "📚 Resúmenes de Libros", "🔥 Historias de Éxito"],
-                en: ["🧠 Personal Development / Habits", "💰 Entrepreneurship / Business", "🗣️ Motivational Speeches", "📚 Book Summaries", "🔥 Success Stories"]
-            },
-            religion: {
-                es: ["📖 Estudios Bíblicos / Reflexiones","🙏 Mensajes de Fe / Predicas", "🕊️ Frases y Versículos", "⛪ Testimonios de Vida", "🤲 Oraciones y Motivación Cristiana"],
-                en: ["📖 Biblical Studies / Reflections", "🙏 Faith Messages / Sermons", "🕊️ Quotes and Versicles", "⛪ Life Testimonials", "🤲 Prayers and Christian Motivation"]
-            }
+            dramas: { es: ["💔 Romance CEO / Rico y Pobre", "🔥 Venganza / Reencarnación", "🔫 Mafia / Crimen Organizado", "✨ Fantasía / Sistema Mágico", "😂 Comedia / Vida Cotidiana"], en: ["💔 CEO Romance / Rich & Poor", "🔥 Revenge / Reincarnation", "🔫 Mafia / Organized Crime", "✨ Fantasy / Magic System", "😂 Comedy / Daily Life"] },
+            salud: { es: ["🥗 Dietas Virales / Pérdida de peso", "🔬 Nuevos Estudios Científicos", "🏋️ Rutinas de Ejercicios Efectivas", "💊 Alimentación y Suplementación", "🏥 Noticias de Salud y Bienestar"], en: ["🥗 Viral Diets / Weight Loss", "🔬 New Scientific Studies", "🏋️ Effective Workout Routines", "💊 Nutrition and Supplements", "🏥 Health and Wellness News"] },
+            motivacion: { es: ["🧠 Desarrollo Personal / Hábitos", "💰 Emprendimiento / Negocios", "🗣️ Discursos Motivacionales", "📚 Resúmenes de Libros", "🔥 Historias de Éxito"], en: ["🧠 Personal Development / Habits", "💰 Entrepreneurship / Business", "🗣️ Motivational Speeches", "📚 Book Summaries", "🔥 Success Stories"] },
+            religion: { es: ["📖 Estudios Bíblicos / Reflexiones","🙏 Mensajes de Fe / Predicas", "🕊️ Frases y Versículos", "⛪ Testimonios de Vida", "🤲 Oraciones y Motivación Cristiana"], en: ["📖 Biblical Studies / Reflections", "🙏 Faith Messages / Sermons", "🕊️ Quotes and Versicles", "⛪ Life Testimonials", "🤲 Prayers and Christian Motivation"] }
         };
 
         const translations = {
-            es: {
-                tagline: "Crea • Conecta • Impacta", title: "Minería de Contenido",
-                subtitle: "Elige tu nicho, selecciona la categoría y extrae material viral largo para dividir, hacer clipping y monetizar.",
-                explore: "Explorar", mining: "Rastreando...", loadingGeneric: "La IA está buscando estrenos y artículos de la semana...",
-                empty: "No se encontraron estrenos con potencial de clipping hoy. Intenta más tarde.", btnText: "Ir a la Fuente",
-                errTitle: "Error de Conexión", errMsg: "Hubo un problema al conectar con el servidor.",
-                virLabel: "Potencial:", capsLabel: "Caps"
-            },
-            en: {
-                tagline: "Create • Connect • Impact", title: "Content Mining",
-                subtitle: "Choose your niche, select the category and extract long viral material to split, clip and monetize.",
-                explore: "Explore", mining: "Scanning...", loadingGeneric: "AI is scanning for weekly releases and articles...",
-                empty: "No new releases with clipping potential found today. Try later.", btnText: "Go to Source",
-                errTitle: "Connection Error", errMsg: "There was a problem connecting to the server.",
-                virLabel: "Potential:", capsLabel: "Eps"
-            }
+            es: { tagline: "Crea • Conecta • Impacta", title: "Minería de Contenido", subtitle: "Elige tu nicho, selecciona la categoría y extrae material viral largo para dividir, hacer clipping y monetizar.", explore: "Explorar", mining: "Rastreando Bóvedas...", loadingGeneric: "La IA está buscando en las plataformas de series...", empty: "No se encontraron tesoros. Intenta otra categoría.", btnText: "Ir a la Fuente", errTitle: "Error", errMsg: "Hubo un problema.", freeLabel: "Gratis:" },
+            en: { tagline: "Create • Connect • Impact", title: "Content Mining", subtitle: "Choose your niche, select the category and extract long viral material to split, clip and monetize.", explore: "Explore", mining: "Scanning Vaults...", loadingGeneric: "AI is searching drama platforms...", empty: "No treasures found. Try another category.", btnText: "Go to Source", errTitle: "Error", errMsg: "There was a problem.", freeLabel: "Free:" }
         };
 
         function switchNiche(nicho) {
@@ -203,13 +178,8 @@
                 });
 
                 if (!response.ok) {
-                    let errorMessage = "Error desconocido del servidor";
-                    try {
-                        const errorData = await response.json();
-                        errorMessage = errorData.error || errorMessage;
-                    } catch (e) {
-                        errorMessage = await response.text();
-                    }
+                    let errorMessage = "Error desconocido";
+                    try { const errorData = await response.json(); errorMessage = errorData.error || errorMessage; } catch (e) { errorMessage = await response.text(); }
                     throw new Error(errorMessage);
                 }
 
@@ -229,9 +199,8 @@
             const contenedor = document.getElementById('resultados');
             contenedor.innerHTML = '';
             const t = translations[currentLang];
-            let seriesFiltradas = currentNiche === 'dramas' ? series.filter(s => s.capitulos >= 5) : series;
 
-            if (seriesFiltradas.length === 0) {
+            if (series.length === 0) {
                 contenedor.innerHTML = `<p style="text-align:center; color:#666; grid-column: 1/-1;">${t.empty}</p>`;
                 return;
             }
@@ -239,21 +208,25 @@
             const clippingNichos = ['salud', 'motivacion', 'religion'];
             let gridHTML = '<div class="grid-results">';
             
-            seriesFiltradas.forEach(serie => {
+            series.forEach(serie => {
                 let metaHTML = '';
                 let cardClass = `card ${currentNiche}-card`;
                 
                 if (currentNiche === 'dramas') {
                     metaHTML = `
-                        <div class="card-meta"><span>🎬 ${serie.genero}</span><span class="stat-caps">${serie.capitulos} ${t.capsLabel}</span></div>
-                        <div class="card-meta" style="border:none; padding:0;"><span>🔥 ${t.virLabel}</span><span class="stat-viral">${serie.viralidad}</span></div>`;
+                        <p class="card-desc">${serie.descripcion || ''}</p>
+                        <div class="card-meta"><span>🎁 ${t.freeLabel} <span class="stat-caps">${serie.capitulos || 'N/A'}</span></span></div>
+                    `;
                 } else if (clippingNichos.includes(currentNiche)) {
                     
-                    // Lógica para saber si es Video o Artículo
-                    let tipoTexto = serie.tipo_contenido || "Video Largo";
+                    let tipoTexto = serie.tipo_contenido || "Contenido Encontrado";
+                    let esAudio = tipoTexto.toLowerCase().includes('audio') || tipoTexto.toLowerCase().includes('podcast');
                     let esArticulo = tipoTexto.toLowerCase().includes('artíc') || tipoTexto.toLowerCase().includes('news');
-                    let claseBadge = esArticulo ? 'badge-articulo' : 'badge-video';
-                    let iconoBadge = esArticulo ? '📰' : '🎥';
+                    
+                    let claseBadge = 'badge-video';
+                    let iconoBadge = '🎥';
+                    if (esAudio) { claseBadge = 'badge-audio'; iconoBadge = '🎧'; }
+                    else if (esArticulo) { claseBadge = 'badge-articulo'; iconoBadge = '📰'; }
 
                     metaHTML = `
                         <span class="type-badge ${claseBadge}">${iconoBadge} ${tipoTexto}</span>
